@@ -1,0 +1,38 @@
+{
+  "name": "Debt",
+  "type": "object",
+  "properties": {
+    "name": {
+      "type": "string",
+      "description": "Name of the debt"
+    },
+    "total_amount": {
+      "type": "number",
+      "description": "Total debt amount"
+    },
+    "paid_amount": {
+      "type": "number",
+      "default": 0,
+      "description": "Amount already paid"
+    },
+    "start_date": {
+      "type": "string",
+      "format": "date",
+      "description": "Start date of the debt"
+    },
+    "due_date": {
+      "type": "string",
+      "format": "date",
+      "description": "Due date for the debt"
+    },
+    "category": {
+      "type": "string",
+      "description": "Debt category"
+    }
+  },
+  "required": [
+    "name",
+    "total_amount",
+    "start_date"
+  ]
+}

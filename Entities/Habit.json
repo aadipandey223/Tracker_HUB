@@ -1,0 +1,44 @@
+{
+  "name": "Habit",
+  "type": "object",
+  "properties": {
+    "name": {
+      "type": "string",
+      "description": "Name of the habit"
+    },
+    "description": {
+      "type": "string",
+      "description": "Description of the habit"
+    },
+    "icon": {
+      "type": "string",
+      "description": "Lucide icon name"
+    },
+    "target_value": {
+      "type": "number",
+      "description": "Target value for the habit"
+    },
+    "unit": {
+      "type": "string",
+      "description": "Unit of measurement"
+    },
+    "frequency": {
+      "type": "string",
+      "enum": [
+        "daily",
+        "weekly",
+        "monthly"
+      ],
+      "default": "daily",
+      "description": "How often the habit should be done"
+    },
+    "color": {
+      "type": "string",
+      "description": "Color for visual representation"
+    }
+  },
+  "required": [
+    "name",
+    "frequency"
+  ]
+}

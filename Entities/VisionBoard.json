@@ -1,0 +1,64 @@
+{
+  "name": "VisionBoard",
+  "type": "object",
+  "properties": {
+    "title": {
+      "type": "string",
+      "description": "Board title"
+    },
+    "category": {
+      "type": "string",
+      "enum": [
+        "Career Growth",
+        "Financial Goals",
+        "Personal Development",
+        "Relationships",
+        "Health & Wellness",
+        "Travel Dreams",
+        "Creative Projects",
+        "Other"
+      ],
+      "description": "Board category"
+    },
+    "description": {
+      "type": "string",
+      "description": "Board description"
+    },
+    "background_color": {
+      "type": "string",
+      "default": "#f8fafc",
+      "description": "Background color"
+    },
+    "background_image": {
+      "type": "string",
+      "description": "Background image URL"
+    },
+    "is_archived": {
+      "type": "boolean",
+      "default": false
+    },
+    "is_starred": {
+      "type": "boolean",
+      "default": false
+    },
+    "tags": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "theme": {
+      "type": "string",
+      "enum": [
+        "light",
+        "dark",
+        "gradient"
+      ],
+      "default": "light"
+    }
+  },
+  "required": [
+    "title",
+    "category"
+  ]
+}

@@ -1,0 +1,379 @@
+import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { base44 } from '@/api/base44Client.supabase';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Target, CheckSquare, DollarSign, Calendar, ArrowRight, Sparkles, Mail, Lock, Chrome, Loader2 } from 'lucide-react';
+
+export default function Welcome() {
+    const navigate = useNavigate();
+    const [isLoading, setIsLoading] = useState(false);
+    const [error, setError] = useState('');
+
+    // Login state
+    const [loginEmail, setLoginEmail] = useState('');
+    const [loginPassword, setLoginPassword] = useState('');
+
+    // Signup state
+    const [signupEmail, setSignupEmail] = useState('');
+    const [signupPassword, setSignupPassword] = useState('');
+    const [signupConfirmPassword, setSignupConfirmPassword] = useState('');
+
+    // Check if user is already logged in
+    useEffect(() => {
+        const checkSession = async () => {
+            try {
+                const session = await base44.auth.getSession();
+                if (session) {
+                    navigate('/dashboard');
+                }
+            } catch (err) {
+                // Not logged in, stay on welcome page
+            }
+        };
+        checkSession();
+    }, [navigate]);
+
+    const handleEmailLogin = async (e) => {
+        e.preventDefault();
+        setError('');
+        setIsLoading(true);
+
+        try {
+            await base44.auth.signInWithEmail(loginEmail, loginPassword);
+            navigate('/dashboard');
+        } catch (err) {
+            setError(err.message || 'Login failed. Please check your credentials.');
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
+    const handleEmailSignup = async (e) => {
+        e.preventDefault();
+        setError('');
+
+        if (signupPassword !== signupConfirmPassword) {
+            setError('Passwords do not match');
+            return;
+        }
+
+        if (signupPassword.length < 6) {
+            setError('Password must be at least 6 characters');
+            return;
+        }
+
+        setIsLoading(true);
+
+        try {
+            await base44.auth.signUpWithEmail(signupEmail, signupPassword);
+            setError('');
+            alert('Account created! Please check your email to verify your account.');
+            // Switch to login tab
+            document.querySelector('[value="login"]')?.click();
+        } catch (err) {
+            setError(err.message || 'Signup failed. Please try again.');
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
+    const handleGoogleLogin = async () => {
+        setIsLoading(true);
+        setError('');
+
+        try {
+            await base44.auth.signInWithOAuth('google', '/dashboard');
+        } catch (err) {
+            setError(err.message || 'Google login failed');
+            setIsLoading(false);
+        }
+    };
+
+    return (
+        <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-orange-900 flex flex-col">
+            {/* Background Effects */}
+            <div className="absolute inset-0 overflow-hidden pointer-events-none">
+                <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-orange-500/20 rounded-full blur-3xl" />
+                <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-orange-600/20 rounded-full blur-3xl" />
+            </div>
+
+            {/* Header */}
+            <header className="relative z-10 p-6">
+                <div className="flex items-center space-x-2">
+                    <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-orange-400 to-orange-600 flex items-center justify-center">
+                        <span className="text-white font-bold text-xl">T</span>
+                    </div>
+                    <h1 className="text-2xl font-bold text-white">
+                        Tracker Hub
+                    </h1>
+                </div>
+            </header>
+
+            {/* Main Content */}
+            <main className="relative z-10 flex-1 flex items-center justify-center px-4 py-12">
+                <div className="w-full max-w-6xl grid lg:grid-cols-2 gap-12 items-center">
+
+                    {/* Left Side - Hero */}
+                    <div className="text-center lg:text-left space-y-6">
+                        <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-orange-500/20 text-orange-400 text-sm font-medium">
+                            <Sparkles className="w-4 h-4" />
+                            All-in-One Productivity Hub
+                        </div>
+
+                        <h2 className="text-4xl md:text-5xl lg:text-6xl font-bold text-white leading-tight">
+                            Track Your Life,<br />
+                            <span className="bg-gradient-to-r from-orange-400 to-orange-600 bg-clip-text text-transparent">
+                                Achieve Your Goals
+                            </span>
+                        </h2>
+
+                        <p className="text-xl text-gray-400 max-w-lg text-center lg:text-left mx-auto lg:mx-0">
+                            Manage habits, tasks, finances, and weekly planning all in one beautiful dashboard
+                        </p>
+
+                        {/* Features */}
+                        <div className="grid grid-cols-2 gap-4 pt-6 max-w-xs mx-auto lg:mx-0 lg:max-w-none">
+                            <div className="flex items-center gap-3 text-gray-300">
+                                <div className="w-10 h-10 rounded-lg bg-orange-500/20 flex items-center justify-center">
+                                    <Target className="w-5 h-5 text-orange-500" />
+                                </div>
+                                <span>Habit Tracking</span>
+                            </div>
+                            <div className="flex items-center gap-3 text-gray-300">
+                                <div className="w-10 h-10 rounded-lg bg-blue-500/20 flex items-center justify-center">
+                                    <CheckSquare className="w-5 h-5 text-blue-500" />
+                                </div>
+                                <span>Task Manager</span>
+                            </div>
+                            <div className="flex items-center gap-3 text-gray-300">
+                                <div className="w-10 h-10 rounded-lg bg-green-500/20 flex items-center justify-center">
+                                    <DollarSign className="w-5 h-5 text-green-500" />
+                                </div>
+                                <span>Finance Tracker</span>
+                            </div>
+                            <div className="flex items-center gap-3 text-gray-300">
+                                <div className="w-10 h-10 rounded-lg bg-purple-500/20 flex items-center justify-center">
+                                    <Calendar className="w-5 h-5 text-purple-500" />
+                                </div>
+                                <span>Weekly Planner</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Right Side - Auth Card */}
+                    <div className="flex justify-center lg:justify-end">
+                        <Card className="w-full max-w-md bg-gray-800/50 backdrop-blur-xl border-gray-700">
+                            <CardHeader className="text-center pb-2">
+                                <CardTitle className="text-2xl font-bold text-white">Welcome Back</CardTitle>
+                                <CardDescription className="text-gray-400">
+                                    Sign in to continue your journey
+                                </CardDescription>
+                            </CardHeader>
+                            <CardContent className="pt-6">
+                                {error && (
+                                    <div className="mb-4 p-3 rounded-lg bg-red-500/10 border border-red-500/20 text-red-400 text-sm">
+                                        {error}
+                                    </div>
+                                )}
+
+                                <Tabs defaultValue="login" className="w-full">
+                                    <TabsList className="grid w-full grid-cols-2 bg-gray-700/50">
+                                        <TabsTrigger value="login" className="data-[state=active]:bg-orange-600">
+                                            Login
+                                        </TabsTrigger>
+                                        <TabsTrigger value="signup" className="data-[state=active]:bg-orange-600">
+                                            Sign Up
+                                        </TabsTrigger>
+                                    </TabsList>
+
+                                    {/* Login Tab */}
+                                    <TabsContent value="login" className="space-y-4 pt-6">
+                                        <form onSubmit={handleEmailLogin} className="space-y-4">
+                                            <div className="space-y-2">
+                                                <Label htmlFor="login-email" className="text-gray-300">Email</Label>
+                                                <div className="relative">
+                                                    <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
+                                                    <Input
+                                                        id="login-email"
+                                                        type="email"
+                                                        placeholder="your@email.com"
+                                                        value={loginEmail}
+                                                        onChange={(e) => setLoginEmail(e.target.value)}
+                                                        className="pl-10 bg-gray-700/50 border-gray-600 text-white placeholder:text-gray-500"
+                                                        required
+                                                    />
+                                                </div>
+                                            </div>
+
+                                            <div className="space-y-2">
+                                                <Label htmlFor="login-password" className="text-gray-300">Password</Label>
+                                                <div className="relative">
+                                                    <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
+                                                    <Input
+                                                        id="login-password"
+                                                        type="password"
+                                                        placeholder="••••••••"
+                                                        value={loginPassword}
+                                                        onChange={(e) => setLoginPassword(e.target.value)}
+                                                        className="pl-10 bg-gray-700/50 border-gray-600 text-white placeholder:text-gray-500"
+                                                        required
+                                                    />
+                                                </div>
+                                            </div>
+
+                                            <Button
+                                                type="submit"
+                                                disabled={isLoading}
+                                                className="w-full bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 text-white h-11"
+                                            >
+                                                {isLoading ? (
+                                                    <>
+                                                        <Loader2 className="mr-2 w-4 h-4 animate-spin" />
+                                                        Logging in...
+                                                    </>
+                                                ) : (
+                                                    <>
+                                                        Login
+                                                        <ArrowRight className="ml-2 w-4 h-4" />
+                                                    </>
+                                                )}
+                                            </Button>
+                                        </form>
+
+                                        <div className="relative my-6">
+                                            <div className="absolute inset-0 flex items-center">
+                                                <div className="w-full border-t border-gray-700"></div>
+                                            </div>
+                                            <div className="relative flex justify-center text-sm">
+                                                <span className="px-2 bg-gray-800/50 text-gray-500">Or continue with</span>
+                                            </div>
+                                        </div>
+
+                                        <Button
+                                            type="button"
+                                            onClick={handleGoogleLogin}
+                                            disabled={isLoading}
+                                            variant="outline"
+                                            className="w-full bg-white hover:bg-gray-100 text-gray-900 border-gray-300"
+                                        >
+                                            <Chrome className="mr-2 w-5 h-5" />
+                                            Google
+                                        </Button>
+                                    </TabsContent>
+
+                                    {/* Signup Tab */}
+                                    <TabsContent value="signup" className="space-y-4 pt-6">
+                                        <form onSubmit={handleEmailSignup} className="space-y-4">
+                                            <div className="space-y-2">
+                                                <Label htmlFor="signup-email" className="text-gray-300">Email</Label>
+                                                <div className="relative">
+                                                    <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
+                                                    <Input
+                                                        id="signup-email"
+                                                        type="email"
+                                                        placeholder="your@email.com"
+                                                        value={signupEmail}
+                                                        onChange={(e) => setSignupEmail(e.target.value)}
+                                                        className="pl-10 bg-gray-700/50 border-gray-600 text-white placeholder:text-gray-500"
+                                                        required
+                                                    />
+                                                </div>
+                                            </div>
+
+                                            <div className="space-y-2">
+                                                <Label htmlFor="signup-password" className="text-gray-300">Password</Label>
+                                                <div className="relative">
+                                                    <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
+                                                    <Input
+                                                        id="signup-password"
+                                                        type="password"
+                                                        placeholder="••••••••"
+                                                        value={signupPassword}
+                                                        onChange={(e) => setSignupPassword(e.target.value)}
+                                                        className="pl-10 bg-gray-700/50 border-gray-600 text-white placeholder:text-gray-500"
+                                                        required
+                                                        minLength={6}
+                                                    />
+                                                </div>
+                                            </div>
+
+                                            <div className="space-y-2">
+                                                <Label htmlFor="signup-confirm" className="text-gray-300">Confirm Password</Label>
+                                                <div className="relative">
+                                                    <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
+                                                    <Input
+                                                        id="signup-confirm"
+                                                        type="password"
+                                                        placeholder="••••••••"
+                                                        value={signupConfirmPassword}
+                                                        onChange={(e) => setSignupConfirmPassword(e.target.value)}
+                                                        className="pl-10 bg-gray-700/50 border-gray-600 text-white placeholder:text-gray-500"
+                                                        required
+                                                        minLength={6}
+                                                    />
+                                                </div>
+                                            </div>
+
+                                            <Button
+                                                type="submit"
+                                                disabled={isLoading}
+                                                className="w-full bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 text-white h-11"
+                                            >
+                                                {isLoading ? (
+                                                    <>
+                                                        <Loader2 className="mr-2 w-4 h-4 animate-spin" />
+                                                        Creating account...
+                                                    </>
+                                                ) : (
+                                                    <>
+                                                        Create Account
+                                                        <ArrowRight className="ml-2 w-4 h-4" />
+                                                    </>
+                                                )}
+                                            </Button>
+                                        </form>
+
+                                        <div className="relative my-6">
+                                            <div className="absolute inset-0 flex items-center">
+                                                <div className="w-full border-t border-gray-700"></div>
+                                            </div>
+                                            <div className="relative flex justify-center text-sm">
+                                                <span className="px-2 bg-gray-800/50 text-gray-500">Or continue with</span>
+                                            </div>
+                                        </div>
+
+                                        <Button
+                                            type="button"
+                                            onClick={handleGoogleLogin}
+                                            disabled={isLoading}
+                                            variant="outline"
+                                            className="w-full bg-white hover:bg-gray-100 text-gray-900 border-gray-300"
+                                        >
+                                            <Chrome className="mr-2 w-5 h-5" />
+                                            Google
+                                        </Button>
+                                    </TabsContent>
+                                </Tabs>
+
+                                <div className="mt-8 pt-6 border-t border-gray-700">
+                                    <p className="text-xs text-gray-500 text-center">
+                                        By continuing, you agree to our Terms of Service and Privacy Policy
+                                    </p>
+                                </div>
+                            </CardContent>
+                        </Card>
+                    </div>
+                </div>
+            </main>
+
+            {/* Footer */}
+            <footer className="relative z-10 py-6 text-center text-gray-500 text-sm">
+                <p>© 2025 Tracker Hub. Build better habits, manage tasks, and track your finances.</p>
+            </footer>
+        </div>
+    );
+}
