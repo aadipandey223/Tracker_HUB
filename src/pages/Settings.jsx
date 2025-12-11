@@ -38,6 +38,31 @@ export default function Settings() {
         setCurrency(settings.currency || 'INR');
     }, [settings.currency]);
 
+    // Helper functions to get display values
+    const getLanguageDisplay = (lang) => {
+        const languages = {
+            'en': '🇺🇸 English',
+            'es': '🇪🇸 Español', 
+            'fr': '🇫🇷 Français',
+            'de': '🇩🇪 Deutsch',
+            'hi': '🇮🇳 हिन्दी'
+        };
+        return languages[lang] || lang;
+    };
+
+    const getCurrencyDisplay = (curr) => {
+        const currencies = {
+            'INR': '₹ INR',
+            'USD': '$ USD',
+            'EUR': '€ EUR', 
+            'GBP': '£ GBP',
+            'JPY': '¥ JPY',
+            'CAD': '$ CAD',
+            'AUD': '$ AUD'
+        };
+        return currencies[curr] || curr;
+    };
+
     const toggleDarkMode = () => {
         const newMode = !darkMode;
         setDarkMode(newMode);
@@ -135,15 +160,15 @@ export default function Settings() {
                                     <p className="text-sm text-gray-500">Choose your preferred language</p>
                                 </div>
                                 <Select value={language} onValueChange={handleLanguageChange}>
-                                    <SelectTrigger className="w-32">
-                                        <SelectValue />
+                                    <SelectTrigger className="w-36">
+                                        <SelectValue>{getLanguageDisplay(language)}</SelectValue>
                                     </SelectTrigger>
                                     <SelectContent>
-                                        <SelectItem value="en">English</SelectItem>
-                                        <SelectItem value="es">Español</SelectItem>
-                                        <SelectItem value="fr">Français</SelectItem>
-                                        <SelectItem value="de">Deutsch</SelectItem>
-                                        <SelectItem value="hi">हिन्दी</SelectItem>
+                                        <SelectItem value="en">🇺🇸 English</SelectItem>
+                                        <SelectItem value="es">🇪🇸 Español</SelectItem>
+                                        <SelectItem value="fr">🇫🇷 Français</SelectItem>
+                                        <SelectItem value="de">🇩🇪 Deutsch</SelectItem>
+                                        <SelectItem value="hi">🇮🇳 हिन्दी</SelectItem>
                                     </SelectContent>
                                 </Select>
                             </div>
@@ -154,17 +179,17 @@ export default function Settings() {
                                     <p className="text-sm text-gray-500">Choose your preferred currency</p>
                                 </div>
                                 <Select value={currency} onValueChange={handleCurrencyChange}>
-                                    <SelectTrigger className="w-32">
-                                        <SelectValue />
+                                    <SelectTrigger className="w-36">
+                                        <SelectValue>{getCurrencyDisplay(currency)}</SelectValue>
                                     </SelectTrigger>
                                     <SelectContent>
-                                        <SelectItem value="INR">₹ INR</SelectItem>
-                                        <SelectItem value="USD">$ USD</SelectItem>
-                                        <SelectItem value="EUR">€ EUR</SelectItem>
-                                        <SelectItem value="GBP">£ GBP</SelectItem>
-                                        <SelectItem value="JPY">¥ JPY</SelectItem>
-                                        <SelectItem value="CAD">$ CAD</SelectItem>
-                                        <SelectItem value="AUD">$ AUD</SelectItem>
+                                        <SelectItem value="INR">₹ Indian Rupee (INR)</SelectItem>
+                                        <SelectItem value="USD">$ US Dollar (USD)</SelectItem>
+                                        <SelectItem value="EUR">€ Euro (EUR)</SelectItem>
+                                        <SelectItem value="GBP">£ British Pound (GBP)</SelectItem>
+                                        <SelectItem value="JPY">¥ Japanese Yen (JPY)</SelectItem>
+                                        <SelectItem value="CAD">$ Canadian Dollar (CAD)</SelectItem>
+                                        <SelectItem value="AUD">$ Australian Dollar (AUD)</SelectItem>
                                     </SelectContent>
                                 </Select>
                             </div>
