@@ -9,10 +9,10 @@ import Dashboard from './pages/Dashboard';
 import Finance from './pages/Finance';
 import Habits from './pages/Habits';
 import Welcome from './pages/Welcome';
-import VisionBoard from '../Pages/visionBoard';
-import Profile from '../Pages/Profile';
-import Settings from '../Pages/Settings';
-import TasksPage from '../Pages/Task';
+import VisionBoard from './pages/VisionBoard';
+import Profile from './pages/Profile';
+import Settings from './pages/Settings';
+import TasksPage from './pages/Tasks';
 
 function App() {
     const [isAuthenticated, setIsAuthenticated] = useState(null); // null = checking, true/false = result
