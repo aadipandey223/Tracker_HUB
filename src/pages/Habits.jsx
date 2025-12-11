@@ -406,7 +406,7 @@ export default function Habits() {
                   Cancel
                 </Button>
                 <Button
-                  className="bg-orange-600 hover:bg-orange-700"
+                  className="bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600"
                   onClick={confirmCopyHabits}
                   disabled={selectedHabitsToCopy.size === 0}
                 >
@@ -438,7 +438,7 @@ export default function Habits() {
               <CalendarIcon className="w-4 h-4" />
               {showYearly ? t('common.month') + 'ly View' : 'Yearly Stats'}
             </Button>
-            <Button id="add-habit-btn" className="gap-2 bg-orange-600 hover:bg-orange-700" onClick={handleAddHabit}>
+            <Button id="add-habit-btn" className="gap-2 bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600" onClick={handleAddHabit}>
               <Plus className="w-4 h-4" />
               {t('habits.addHabit')}
             </Button>
@@ -488,7 +488,7 @@ export default function Habits() {
                   title="Copy habits from previous month"
                 >
                   <Copy className="w-4 h-4" />
-                  Copy Last Month
+                  <span className="hidden sm:inline">Copy Last Month</span>
                 </Button>
               </div>
 
@@ -555,7 +555,7 @@ export default function Habits() {
                       <Copy className="w-4 h-4 mr-2" />
                       Copy Last Month
                     </Button>
-                    <Button className="bg-orange-600 hover:bg-orange-700" onClick={handleAddHabit}>
+                    <Button className="bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600" onClick={handleAddHabit}>
                       <Plus className="w-4 h-4 mr-2" />
                       Add New Habit
                     </Button>
@@ -617,7 +617,7 @@ export default function Habits() {
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setIsAddHabitOpen(false)}>Cancel</Button>
-            <Button onClick={confirmAddHabit} className="bg-orange-600 hover:bg-orange-700">Add Habit</Button>
+            <Button onClick={confirmAddHabit} className="bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600">Add Habit</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

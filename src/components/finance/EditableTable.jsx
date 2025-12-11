@@ -1,11 +1,18 @@
-import { useMemo, useCallback } from 'react';
+import { useMemo, useCallback, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Plus, Trash2 } from 'lucide-react';
 import { useSettings } from '@/context/SettingsContext';
+import { sanitizeInput, sanitizeNumber } from '@/utils/sanitize';
 
 function EditableTable({ title, columns, type, data = [], onDataChange }) {
   const { formatCurrency } = useSettings();
+  const [localData, setLocalData] = useState(data);
+
+  // Sync local data when prop data changes (e.g., month navigation)
+  useMemo(() => {
+    setLocalData(data);
+  }, [data]);
 
   const notifyDataChange = useCallback((newRows) => {
     if (onDataChange) {
@@ -15,34 +22,55 @@ function EditableTable({ title, columns, type, data = [], onDataChange }) {
 
   const addRow = () => {
     const newRows = [
-      ...data,
+      ...localData,
       {
         id: Math.random().toString(36).substr(2, 9),
         col1: '',
-        col2: 0,
-        col3: 0,
+        col2: '',
+        col3: '',
         editable: true,
       },
     ];
+    setLocalData(newRows);
     notifyDataChange(newRows);
   };
 
   const deleteRow = (id) => {
     if (window.confirm('Delete this row?')) {
-      const newRows = data.filter((row) => row.id !== id);
+      const newRows = localData.filter((row) => row.id !== id);
+      setLocalData(newRows);
       notifyDataChange(newRows);
     }
   };
 
-  const updateCell = (id, field, value) => {
-    const newRows = data.map((row) =>
+  const updateCellLocal = (id, field, value) => {
+    // Update local state immediately for responsive UI
+    const newRows = localData.map((row) =>
       row.id === id ? { ...row, [field]: value } : row
+    );
+    setLocalData(newRows);
+  };
+
+  const saveCellValue = (id, field, value) => {
+    // Sanitize input before saving
+    let sanitizedValue = value;
+    if (field === 'col1') {
+      // Sanitize text input
+      sanitizedValue = sanitizeInput(value);
+    } else if (field === 'col2' || field === 'col3') {
+      // Sanitize number input
+      sanitizedValue = value === '' ? '' : sanitizeNumber(value);
+    }
+    
+    // Save to parent (and localStorage) only on blur
+    const newRows = localData.map((row) =>
+      row.id === id ? { ...row, [field]: sanitizedValue } : row
     );
     notifyDataChange(newRows);
   };
 
   const calculatedRows = useMemo(() => {
-    return data.map((row) => {
+    return localData.map((row) => {
       const planned = parseFloat(row.col2) || 0;
       const actual = parseFloat(row.col3) || 0;
 
@@ -64,7 +92,7 @@ function EditableTable({ title, columns, type, data = [], onDataChange }) {
         };
       }
     });
-  }, [data, type]);
+  }, [localData, type]);
 
   const getVarianceColor = (variance, percent) => {
     if (type === 'expense') {
@@ -124,28 +152,39 @@ function EditableTable({ title, columns, type, data = [], onDataChange }) {
                     <input
                       type="text"
                       value={row.col1}
-                      onChange={(e) => updateCell(row.id, 'col1', e.target.value)}
+                      onChange={(e) => updateCellLocal(row.id, 'col1', e.target.value)}
+                      onBlur={(e) => saveCellValue(row.id, 'col1', e.target.value)}
                       className="w-full bg-transparent border-0 focus:outline-none focus:ring-2 focus:ring-green-500 rounded px-2 py-1"
                       placeholder={columns[0]}
-                      disabled={!row.editable && row.editable !== undefined} // Allow if undefined (legacy) or true
+                      disabled={!row.editable && row.editable !== undefined}
                     />
                   </td>
                   <td className="py-3 px-4">
                     <input
                       type="number"
                       value={row.col2}
-                      onChange={(e) => updateCell(row.id, 'col2', parseFloat(e.target.value) || 0)}
+                      onChange={(e) => updateCellLocal(row.id, 'col2', e.target.value)}
+                      onBlur={(e) => {
+                        const val = e.target.value === '' ? '' : parseFloat(e.target.value) || '';
+                        saveCellValue(row.id, 'col2', val);
+                      }}
                       className="w-full bg-transparent border-0 focus:outline-none focus:ring-2 focus:ring-green-500 rounded px-2 py-1"
                       disabled={type === 'debt' && !row.editable && row.editable !== undefined}
+                      placeholder="0"
                     />
                   </td>
                   <td className="py-3 px-4">
                     <input
                       type="number"
                       value={row.col3}
-                      onChange={(e) => updateCell(row.id, 'col3', parseFloat(e.target.value) || 0)}
+                      onChange={(e) => updateCellLocal(row.id, 'col3', e.target.value)}
+                      onBlur={(e) => {
+                        const val = e.target.value === '' ? '' : parseFloat(e.target.value) || '';
+                        saveCellValue(row.id, 'col3', val);
+                      }}
                       className="w-full bg-transparent border-0 focus:outline-none focus:ring-2 focus:ring-green-500 rounded px-2 py-1"
                       disabled={type === 'debt' && !row.editable && row.editable !== undefined}
+                      placeholder="0"
                     />
                   </td>
                   <td className={`py-3 px-4 font-medium ${getVarianceColor(row.variance, row.variancePercent)}`}>

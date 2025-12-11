@@ -14,6 +14,7 @@ import {
 } from 'lucide-react';
 import FinanceChart from '@/components/finance/FinanceChart';
 import EditableTable from '@/components/finance/EditableTable';
+import { encryptData, decryptData } from '@/utils/encryption';
 
 export default function Finance() {
   const { t } = useTranslation();
@@ -54,12 +55,24 @@ export default function Finance() {
 
       if (stored) {
         try {
-          const data = JSON.parse(stored);
-          setIncomeData(data.incomeData || []);
-          setExpenseData(data.expenseData || []);
-          setDebtData(data.debtData || []);
+          // Try to decrypt data (new format)
+          const decrypted = decryptData(stored, userId);
+          if (decrypted) {
+            setIncomeData(decrypted.incomeData || []);
+            setExpenseData(decrypted.expenseData || []);
+            setDebtData(decrypted.debtData || []);
+          } else {
+            // Fallback to old unencrypted format
+            const data = JSON.parse(stored);
+            setIncomeData(data.incomeData || []);
+            setExpenseData(data.expenseData || []);
+            setDebtData(data.debtData || []);
+          }
         } catch (error) {
           console.error('Error loading finance data:', error);
+          setIncomeData([]);
+          setExpenseData([]);
+          setDebtData([]);
         }
       } else {
         setIncomeData([]);
@@ -109,7 +122,11 @@ export default function Finance() {
         expenseData: updates.expenseData !== undefined ? updates.expenseData : expenseData,
         debtData: updates.debtData !== undefined ? updates.debtData : debtData,
       };
-      localStorage.setItem(storageKey, JSON.stringify(currentData));
+      // Encrypt data before storing
+      const encrypted = encryptData(currentData, userId);
+      if (encrypted) {
+        localStorage.setItem(storageKey, encrypted);
+      }
     } catch (error) {
       console.error('Error saving finance data:', error);
     }

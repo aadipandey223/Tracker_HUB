@@ -3,6 +3,7 @@ import { useState, useEffect } from 'react';
 import { base44 } from '@/api/base44Client.supabase';
 import { TourProvider } from './context/TourContext';
 import { SettingsProvider } from './context/SettingsContext';
+import { useSessionTimeout } from './hooks/useSessionTimeout';
 import Layout from './Layout';
 import Dashboard from './pages/Dashboard';
 import Finance from './pages/Finance';
@@ -15,6 +16,9 @@ import TasksPage from '../Pages/Task';
 
 function App() {
     const [isAuthenticated, setIsAuthenticated] = useState(null); // null = checking, true/false = result
+    
+    // Auto-logout after 30 minutes of inactivity
+    useSessionTimeout(30);
 
     useEffect(() => {
         // Check authentication on mount

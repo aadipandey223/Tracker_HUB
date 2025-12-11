@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { 
@@ -15,7 +15,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 
-export default function BoardEditor({ 
+export default React.memo(function BoardEditor({ 
   board, 
   items, 
   onBack, 
@@ -34,9 +34,8 @@ export default function BoardEditor({
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [lastSaved, setLastSaved] = useState(new Date());
 
-  // Keyboard shortcuts
-  useEffect(() => {
-    const handleKeyDown = (e) => {
+  // Memoized keyboard handler
+  const handleKeyDown = useCallback((e) => {
       if (e.key === 'Delete' && selectedItem) {
         onDeleteItem(selectedItem.id);
         setSelectedItem(null);
@@ -56,28 +55,30 @@ export default function BoardEditor({
         onUpdateItem(selectedItem.id, updates);
         setSelectedItem(prev => ({ ...prev, ...updates }));
       }
-    };
+  }, [selectedItem, onUpdateItem, onDeleteItem]);
 
+  // Keyboard shortcuts
+  useEffect(() => {
     document.addEventListener('keydown', handleKeyDown);
     return () => document.removeEventListener('keydown', handleKeyDown);
-  }, [selectedItem]);
+  }, [handleKeyDown]);
 
-  const handleSave = () => {
+  const handleSave = useCallback(() => {
     if (title !== board?.title) {
       onUpdateBoard({ title });
     }
     onSave();
     setLastSaved(new Date());
-  };
+  }, [title, board?.title, onUpdateBoard, onSave]);
 
-  const handleAddItem = (itemData) => {
+  const handleAddItem = useCallback((itemData) => {
     // Add at random position
     const x = 50 + Math.random() * 300;
     const y = 50 + Math.random() * 200;
     onAddItem({ ...itemData, x, y });
-  };
+  }, [onAddItem]);
 
-  const handleExport = async () => {
+  const handleExport = useCallback(async () => {
     // Create a canvas snapshot
     const canvas = document.querySelector('.canvas-bg');
     if (!canvas) return;
@@ -93,9 +94,9 @@ export default function BoardEditor({
       // Fallback: just alert
       alert('Export feature coming soon!');
     }
-  };
+  }, [board?.title]);
 
-  const toggleFullscreen = () => {
+  const toggleFullscreen = useCallback(() => {
     if (!document.fullscreenElement) {
       document.documentElement.requestFullscreen();
       setIsFullscreen(true);
@@ -103,7 +104,7 @@ export default function BoardEditor({
       document.exitFullscreen();
       setIsFullscreen(false);
     }
-  };
+  }, []);
 
   if (viewMode === 'present') {
     return (
@@ -197,4 +198,4 @@ export default function BoardEditor({
       </div>
     </div>
   );
-}
+});

@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useCallback, useMemo } from 'react';
 import { Button } from '@/components/ui/button';
 import { 
   ZoomIn, ZoomOut, RotateCcw, Grid, Maximize2, Layers,
@@ -6,7 +6,7 @@ import {
 } from 'lucide-react';
 import CanvasItem from './CanvasItem';
 
-export default function BoardCanvas({ 
+export default React.memo(function BoardCanvas({ 
   board, 
   items, 
   selectedItem, 
@@ -22,17 +22,17 @@ export default function BoardCanvas({
   const [isDragging, setIsDragging] = useState(false);
   const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
 
-  const handleZoomIn = () => setZoom(Math.min(zoom + 0.1, 2));
-  const handleZoomOut = () => setZoom(Math.max(zoom - 0.1, 0.5));
-  const handleResetZoom = () => setZoom(1);
+  const handleZoomIn = useCallback(() => setZoom(prev => Math.min(prev + 0.1, 2)), []);
+  const handleZoomOut = useCallback(() => setZoom(prev => Math.max(prev - 0.1, 0.5)), []);
+  const handleResetZoom = useCallback(() => setZoom(1), []);
 
-  const handleCanvasClick = (e) => {
+  const handleCanvasClick = useCallback((e) => {
     if (e.target === canvasRef.current || e.target.classList.contains('canvas-bg')) {
       onSelectItem(null);
     }
-  };
+  }, [onSelectItem]);
 
-  const handleItemDragStart = (e, item) => {
+  const handleItemDragStart = useCallback((e, item) => {
     if (viewMode === 'present') return;
     setIsDragging(true);
     const rect = e.currentTarget.getBoundingClientRect();
@@ -40,9 +40,9 @@ export default function BoardCanvas({
       x: e.clientX - rect.left,
       y: e.clientY - rect.top
     });
-  };
+  }, [viewMode]);
 
-  const handleItemDrag = (e, item) => {
+  const handleItemDrag = useCallback((e, item) => {
     if (!isDragging || viewMode === 'present') return;
     const canvas = canvasRef.current;
     if (!canvas) return;
@@ -52,23 +52,43 @@ export default function BoardCanvas({
     const newY = (e.clientY - canvasRect.top - dragOffset.y) / zoom;
     
     onUpdateItem(item.id, { x: Math.max(0, newX), y: Math.max(0, newY) });
-  };
+  }, [isDragging, viewMode, dragOffset, zoom, onUpdateItem]);
 
-  const handleItemDragEnd = () => {
+  const handleItemDragEnd = useCallback(() => {
     setIsDragging(false);
-  };
+  }, []);
 
-  const handleBringForward = () => {
+  const handleBringForward = useCallback(() => {
     if (!selectedItem) return;
     const maxZ = Math.max(...items.map(i => i.z_index || 1));
     onUpdateItem(selectedItem.id, { z_index: maxZ + 1 });
-  };
+  }, [selectedItem, items, onUpdateItem]);
 
-  const handleSendBackward = () => {
+  const handleSendBackward = useCallback(() => {
     if (!selectedItem) return;
     const minZ = Math.min(...items.map(i => i.z_index || 1));
     onUpdateItem(selectedItem.id, { z_index: Math.max(1, minZ - 1) });
-  };
+  }, [selectedItem, items, onUpdateItem]);
+
+  // Memoize canvas style
+  const canvasStyle = useMemo(() => ({
+    width: 1200 * zoom,
+    height: 800 * zoom,
+    minWidth: 1200 * zoom,
+    minHeight: 800 * zoom,
+    backgroundColor: board?.background_color || '#f8fafc',
+    backgroundImage: board?.background_image 
+      ? `url(${board.background_image})` 
+      : showGrid 
+        ? 'linear-gradient(to right, rgba(0,0,0,0.05) 1px, transparent 1px), linear-gradient(to bottom, rgba(0,0,0,0.05) 1px, transparent 1px)'
+        : 'none',
+    backgroundSize: board?.background_image ? 'cover' : '20px 20px',
+    backgroundPosition: 'center',
+    borderRadius: '12px',
+    boxShadow: '0 4px 20px rgba(0,0,0,0.1)',
+    transform: `scale(${zoom})`,
+    transformOrigin: 'top left'
+  }), [zoom, board?.background_color, board?.background_image, showGrid]);
 
   return (
     <div className="flex-1 flex flex-col overflow-hidden">
@@ -121,24 +141,7 @@ export default function BoardCanvas({
           ref={canvasRef}
           className={`canvas-bg relative mx-auto transition-transform ${showGrid ? 'bg-[length:20px_20px]' : ''}`}
           onClick={handleCanvasClick}
-          style={{
-            width: 1200 * zoom,
-            height: 800 * zoom,
-            minWidth: 1200 * zoom,
-            minHeight: 800 * zoom,
-            backgroundColor: board?.background_color || '#f8fafc',
-            backgroundImage: board?.background_image 
-              ? `url(${board.background_image})` 
-              : showGrid 
-                ? 'linear-gradient(to right, rgba(0,0,0,0.05) 1px, transparent 1px), linear-gradient(to bottom, rgba(0,0,0,0.05) 1px, transparent 1px)'
-                : 'none',
-            backgroundSize: board?.background_image ? 'cover' : '20px 20px',
-            backgroundPosition: 'center',
-            borderRadius: '12px',
-            boxShadow: '0 4px 20px rgba(0,0,0,0.1)',
-            transform: `scale(${zoom})`,
-            transformOrigin: 'top left'
-          }}
+          style={canvasStyle}
         >
           {items.map(item => (
             <CanvasItem
@@ -159,4 +162,4 @@ export default function BoardCanvas({
       </div>
     </div>
   );
-}
+});

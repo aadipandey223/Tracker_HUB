@@ -177,21 +177,22 @@ function HabitCalendar({ habits, currentMonth, habitLogs, onToggleHabit, onDelet
                       const isCompleted = habitLogs[date]?.[habit.id]?.completed;
                       const currentDate = new Date(date);
                       const isToday = date === todayStr;
-                      const isPastDate = currentDate < today && !isToday;
+                      const isFutureDate = date > todayStr;
+                      const isPastDate = currentDate < today && !isToday && !isFutureDate;
 
                       return (
                         <div
                           key={day}
-                          className={`w-12 p-2 flex items-center justify-center border-l border-gray-200 dark:border-gray-700 cursor-pointer transition-colors ${isToday
-                            ? 'bg-sky-100 dark:bg-sky-900/30 animate-breathe'
-                            : ''
-                            }`}
-                          onClick={() => onToggleHabit(habit.id, date)}
+                          className={`w-12 p-2 flex items-center justify-center border-l border-gray-200 dark:border-gray-700 transition-colors ${isToday ? 'bg-sky-100 dark:bg-sky-900/30 animate-breathe' : ''
+                            } ${isFutureDate ? 'cursor-not-allowed opacity-50' : 'cursor-pointer'}`}
+                          onClick={() => !isFutureDate && onToggleHabit(habit.id, date)}
                         >
                           {isCompleted ? (
                             <div className="w-6 h-6 rounded bg-green-500 flex items-center justify-center">
                               <Check className="w-4 h-4 text-white" />
                             </div>
+                          ) : isFutureDate ? (
+                            <div className="w-6 h-6 rounded border-2 border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-gray-900" />
                           ) : isPastDate ? (
                             <div className="w-6 h-6 rounded bg-red-100 dark:bg-red-900/30 border-2 border-red-200 dark:border-red-800 hover:border-green-500 transition" />
                           ) : (
@@ -199,6 +200,7 @@ function HabitCalendar({ habits, currentMonth, habitLogs, onToggleHabit, onDelet
                           )}
                         </div>
                       );
+
                     })}
                   </div>
                 ))}

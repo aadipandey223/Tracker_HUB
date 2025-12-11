@@ -1,8 +1,8 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useCallback, useMemo } from 'react';
 import { CheckCircle2, X, RotateCw } from 'lucide-react';
 import TextEditor from './TextEditor';
 
-export default function CanvasItem({ 
+export default React.memo(function CanvasItem({ 
   item, 
   isSelected, 
   onSelect, 
@@ -17,9 +17,10 @@ export default function CanvasItem({
   const [isResizing, setIsResizing] = useState(false);
   const [isRotating, setIsRotating] = useState(false);
   const [showTextEditor, setShowTextEditor] = useState(false);
+  const [imageLoaded, setImageLoaded] = useState(false);
   const itemRef = useRef(null);
 
-  const handleMouseDown = (e) => {
+  const handleMouseDown = useCallback((e) => {
     if (viewMode === 'present') return;
     e.stopPropagation();
     onSelect();
@@ -37,9 +38,9 @@ export default function CanvasItem({
     
     document.addEventListener('mousemove', handleMouseMove);
     document.addEventListener('mouseup', handleMouseUp);
-  };
+  }, [viewMode, onSelect, onDragStart, onDrag, onDragEnd]);
 
-  const handleResize = (e, direction) => {
+  const handleResize = useCallback((e, direction) => {
     e.stopPropagation();
     setIsResizing(true);
     
@@ -71,9 +72,9 @@ export default function CanvasItem({
     
     document.addEventListener('mousemove', handleMouseMove);
     document.addEventListener('mouseup', handleMouseUp);
-  };
+  }, [item.width, item.height, zoom, onUpdate]);
 
-  const handleRotate = (e) => {
+  const handleRotate = useCallback((e) => {
     e.stopPropagation();
     setIsRotating(true);
     
@@ -100,24 +101,34 @@ export default function CanvasItem({
     
     document.addEventListener('mousemove', handleMouseMove);
     document.addEventListener('mouseup', handleMouseUp);
-  };
+  }, [item.x, item.y, item.width, item.height, zoom, onUpdate]);
 
-  const handleDoubleClick = () => {
+  const handleDoubleClick = useCallback(() => {
     if (item.type === 'text' || item.type === 'affirmation') {
       setShowTextEditor(true);
     }
-  };
+  }, [item.type]);
 
-  const renderContent = () => {
+  // Memoize content rendering
+  const renderContent = useMemo(() => {
     switch (item.type) {
       case 'image':
         return (
-          <img 
-            src={item.content} 
-            alt="" 
-            className="w-full h-full object-cover rounded-lg"
-            draggable={false}
-          />
+          <>
+            {!imageLoaded && (
+              <div className="w-full h-full flex items-center justify-center bg-gray-100 rounded-lg">
+                <div className="animate-pulse text-gray-400">Loading...</div>
+              </div>
+            )}
+            <img 
+              src={item.content} 
+              alt="" 
+              className={`w-full h-full object-cover rounded-lg transition-opacity ${imageLoaded ? 'opacity-100' : 'opacity-0'}`}
+              draggable={false}
+              loading="lazy"
+              onLoad={() => setImageLoaded(true)}
+            />
+          </>
         );
       
       case 'text':
@@ -179,25 +190,28 @@ export default function CanvasItem({
       default:
         return null;
     }
-  };
+  }, [item.type, item.content, item.style, item.is_completed, imageLoaded]);
+
+  // Memoize item style
+  const itemStyle = useMemo(() => ({
+    left: item.x || 0,
+    top: item.y || 0,
+    width: item.width || 200,
+    height: item.height || 200,
+    transform: `rotate(${item.rotation || 0}deg)`,
+    zIndex: item.z_index || 1
+  }), [item.x, item.y, item.width, item.height, item.rotation, item.z_index]);
 
   return (
     <div
       ref={itemRef}
       className={`absolute cursor-move transition-shadow ${isSelected && viewMode !== 'present' ? 'ring-2 ring-purple-500 ring-offset-2' : ''}`}
-      style={{
-        left: item.x || 0,
-        top: item.y || 0,
-        width: item.width || 200,
-        height: item.height || 200,
-        transform: `rotate(${item.rotation || 0}deg)`,
-        zIndex: item.z_index || 1
-      }}
+      style={itemStyle}
       onMouseDown={handleMouseDown}
       onDoubleClick={handleDoubleClick}
       onClick={(e) => e.stopPropagation()}
     >
-      {renderContent()}
+      {renderContent}
       
       {/* Text Editor */}
       {showTextEditor && isSelected && (item.type === 'text' || item.type === 'affirmation') && (
@@ -269,4 +283,4 @@ export default function CanvasItem({
       )}
     </div>
   );
-}
+});
