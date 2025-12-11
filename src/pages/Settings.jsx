@@ -16,7 +16,7 @@ import {
     Key, 
     Trash2,
     LogOut,
-    DollarSign,
+    Download,
     ChevronRight
 } from 'lucide-react';
 
@@ -99,6 +99,138 @@ export default function Settings() {
     const handleLogout = async () => {
         if (confirm('Are you sure you want to log out?')) {
             await base44.auth.logout('/');
+        }
+    };
+
+    const handleChangePassword = async () => {
+        const newPassword = prompt('Enter your new password (minimum 6 characters):');
+        if (!newPassword) return;
+        
+        if (newPassword.length < 6) {
+            alert('Password must be at least 6 characters long.');
+            return;
+        }
+        
+        try {
+            await base44.auth.updateMe({ password: newPassword });
+            alert('Password updated successfully!');
+        } catch (error) {
+            console.error('Error updating password:', error);
+            alert('Failed to update password. Please try again.');
+        }
+    };
+
+    const handleExportData = async () => {
+        try {
+            const user = await base44.auth.me();
+            if (!user) {
+                alert('Please log in to export your data.');
+                return;
+            }
+
+            // Collect all user data
+            const [habits, habitLogs, tasks, transactions, debts, categories, monthlyBudgets, mentalStates, visionBoards, visionBoardItems] = await Promise.all([
+                base44.entities.Habit.list().catch(() => []),
+                base44.entities.HabitLog.list().catch(() => []),
+                base44.entities.Task.list().catch(() => []),
+                base44.entities.FinanceTransaction.list().catch(() => []),
+                base44.entities.Debt.list().catch(() => []),
+                base44.entities.Category.list().catch(() => []),
+                base44.entities.MonthlyBudget.list().catch(() => []),
+                base44.entities.MentalState.list().catch(() => []),
+                base44.entities.VisionBoard.list().catch(() => []),
+                base44.entities.VisionBoardItem.list().catch(() => [])
+            ]);
+
+            // Get finance data from localStorage
+            const financeData = {};
+            for (let i = 0; i < localStorage.length; i++) {
+                const key = localStorage.key(i);
+                if (key && key.startsWith('finance_data_')) {
+                    financeData[key] = localStorage.getItem(key);
+                }
+            }
+
+            const exportData = {
+                user: {
+                    id: user.id,
+                    email: user.email,
+                    created_at: user.created_at,
+                    user_metadata: user.user_metadata
+                },
+                data: {
+                    habits,
+                    habitLogs,
+                    tasks,
+                    transactions,
+                    debts,
+                    categories,
+                    monthlyBudgets,
+                    mentalStates,
+                    visionBoards,
+                    visionBoardItems,
+                    financeData
+                },
+                settings: {
+                    currency: settings.currency,
+                    language: language,
+                    theme: localStorage.getItem('theme'),
+                    notifications: localStorage.getItem('notifications')
+                },
+                exportedAt: new Date().toISOString()
+            };
+
+            // Create and download file
+            const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = `tracker-hub-data-${new Date().toISOString().split('T')[0]}.json`;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            URL.revokeObjectURL(url);
+
+            alert('Data exported successfully!');
+        } catch (error) {
+            console.error('Error exporting data:', error);
+            alert('Failed to export data. Please try again.');
+        }
+    };
+
+    const handleClearCache = () => {
+        if (confirm('This will clear all local data including offline finance data. Are you sure?')) {
+            try {
+                // Clear localStorage
+                const keysToKeep = ['theme', 'language', 'currency', 'notifications'];
+                const keysToRemove = [];
+                
+                for (let i = 0; i < localStorage.length; i++) {
+                    const key = localStorage.key(i);
+                    if (key && !keysToKeep.includes(key)) {
+                        keysToRemove.push(key);
+                    }
+                }
+                
+                keysToRemove.forEach(key => localStorage.removeItem(key));
+                
+                // Clear sessionStorage
+                sessionStorage.clear();
+                
+                // Clear cache if available
+                if ('caches' in window) {
+                    caches.keys().then(names => {
+                        names.forEach(name => {
+                            caches.delete(name);
+                        });
+                    });
+                }
+                
+                alert('Cache cleared successfully! Please refresh the page.');
+            } catch (error) {
+                console.error('Error clearing cache:', error);
+                alert('Failed to clear cache. Please try again.');
+            }
         }
     };
 
@@ -227,7 +359,11 @@ export default function Settings() {
                             </CardTitle>
                         </CardHeader>
                         <CardContent className="space-y-4">
-                            <Button variant="outline" className="w-full justify-between p-4 h-auto">
+                            <Button 
+                                variant="outline" 
+                                className="w-full justify-between p-4 h-auto"
+                                onClick={handleChangePassword}
+                            >
                                 <div className="flex items-center">
                                     <Key className="w-5 h-5 mr-3 text-red-500" />
                                     <div className="text-left">
@@ -249,9 +385,13 @@ export default function Settings() {
                             </CardTitle>
                         </CardHeader>
                         <CardContent className="space-y-4">
-                            <Button variant="outline" className="w-full justify-between p-4 h-auto">
+                            <Button 
+                                variant="outline" 
+                                className="w-full justify-between p-4 h-auto"
+                                onClick={handleExportData}
+                            >
                                 <div className="flex items-center">
-                                    <DollarSign className="w-5 h-5 mr-3 text-green-500" />
+                                    <Download className="w-5 h-5 mr-3 text-green-500" />
                                     <div className="text-left">
                                         <p className="font-medium">Export Data</p>
                                         <p className="text-xs text-gray-500">Download all your data</p>
@@ -260,7 +400,11 @@ export default function Settings() {
                                 <ChevronRight className="w-4 h-4 text-gray-400" />
                             </Button>
                             
-                            <Button variant="outline" className="w-full justify-between p-4 h-auto">
+                            <Button 
+                                variant="outline" 
+                                className="w-full justify-between p-4 h-auto"
+                                onClick={handleClearCache}
+                            >
                                 <div className="flex items-center">
                                     <Trash2 className="w-5 h-5 mr-3 text-orange-500" />
                                     <div className="text-left">
