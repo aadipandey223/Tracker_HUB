@@ -21,6 +21,7 @@ export default function Welcome() {
     const [signupEmail, setSignupEmail] = useState('');
     const [signupPassword, setSignupPassword] = useState('');
     const [signupConfirmPassword, setSignupConfirmPassword] = useState('');
+    const [isNewUser, setIsNewUser] = useState(true); // Track if user is new
 
     // Check if user is already logged in
     useEffect(() => {
@@ -37,6 +38,24 @@ export default function Welcome() {
         checkSession();
     }, [navigate]);
 
+    // Check if user has existing data to determine if they're new or returning
+    const checkIfReturningUser = async () => {
+        try {
+            const [habits, tasks, boards] = await Promise.all([
+                base44.entities.Habit.list(),
+                base44.entities.Task.list(),
+                base44.entities.VisionBoard.list()
+            ]);
+
+            // If user has any data, they're a returning user
+            const hasData = habits.length > 0 || tasks.length > 0 || boards.length > 0;
+            setIsNewUser(!hasData);
+        } catch (err) {
+            // If error, assume new user
+            setIsNewUser(true);
+        }
+    };
+
     const handleEmailLogin = async (e) => {
         e.preventDefault();
         setError('');
@@ -44,6 +63,7 @@ export default function Welcome() {
 
         try {
             await base44.auth.signInWithEmail(loginEmail, loginPassword);
+            await checkIfReturningUser();
             navigate('/dashboard');
         } catch (err) {
             setError(err.message || 'Login failed. Please check your credentials.');
@@ -87,6 +107,7 @@ export default function Welcome() {
 
         try {
             await base44.auth.signInWithOAuth('google', '/dashboard');
+            await checkIfReturningUser();
         } catch (err) {
             setError(err.message || 'Google login failed');
             setIsLoading(false);
@@ -168,9 +189,9 @@ export default function Welcome() {
                     <div className="flex justify-center lg:justify-end">
                         <Card className="w-full max-w-md bg-gray-800/50 backdrop-blur-xl border-gray-700">
                             <CardHeader className="text-center pb-2">
-                                <CardTitle className="text-2xl font-bold text-white">Welcome Back</CardTitle>
+                                <CardTitle className="text-2xl font-bold text-white">{isNewUser ? 'Welcome to Tracker Hub' : 'Welcome Back'}</CardTitle>
                                 <CardDescription className="text-gray-400">
-                                    Sign in to continue your journey
+                                    {isNewUser ? 'Create an account to get started' : 'Sign in to continue your journey'}
                                 </CardDescription>
                             </CardHeader>
                             <CardContent className="pt-6">

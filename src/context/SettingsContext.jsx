@@ -15,8 +15,8 @@ export const currencySymbols = {
 
 export function SettingsProvider({ children }) {
     const [settings, setSettings] = useState({
-        currency: 'USD',
-        timezone: 'UTC',
+        currency: 'INR',
+        timezone: 'Asia/Kolkata',
         language: 'en'
     });
     const [isLoading, setIsLoading] = useState(true);
@@ -42,8 +42,8 @@ export function SettingsProvider({ children }) {
                 const user = await base44.auth.me();
                 if (user?.settings) {
                     const newSettings = {
-                        currency: user.settings.currency || 'USD',
-                        timezone: user.settings.timezone || 'UTC',
+                        currency: user.settings.currency || 'INR',
+                        timezone: user.settings.timezone || 'Asia/Kolkata',
                         language: user.settings.language || 'en'
                     };
                     setSettings(newSettings);
@@ -71,7 +71,8 @@ export function SettingsProvider({ children }) {
 
     const formatCurrency = (amount) => {
         const num = parseFloat(amount) || 0;
-        return new Intl.NumberFormat('en-US', {
+        const locale = settings.currency === 'INR' ? 'en-IN' : 'en-US';
+        return new Intl.NumberFormat(locale, {
             style: 'currency',
             currency: settings.currency,
             minimumFractionDigits: 0,

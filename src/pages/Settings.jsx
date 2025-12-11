@@ -1,6 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { base44 } from '@/api/base44Client.supabase';
+import { useSettings } from '@/context/SettingsContext';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
@@ -14,17 +15,28 @@ import {
     Shield, 
     Key, 
     Trash2,
-    LogOut 
+    LogOut,
+    DollarSign,
+    ChevronRight
 } from 'lucide-react';
 
 export default function Settings() {
     const { t, i18n } = useTranslation();
+    const { settings, updateSettings } = useSettings();
     const [darkMode, setDarkMode] = useState(
         localStorage.getItem('theme') === 'dark' || 
         (!localStorage.getItem('theme') && window.matchMedia('(prefers-color-scheme: dark)').matches)
     );
-    const [notifications, setNotifications] = useState(true);
+    const [notifications, setNotifications] = useState(
+        localStorage.getItem('notifications') !== 'false'
+    );
     const [language, setLanguage] = useState(i18n.language);
+    const [currency, setCurrency] = useState(settings.currency || 'INR');
+
+    // Sync with settings context
+    useEffect(() => {
+        setCurrency(settings.currency || 'INR');
+    }, [settings.currency]);
 
     const toggleDarkMode = () => {
         const newMode = !darkMode;
@@ -42,7 +54,21 @@ export default function Settings() {
     const handleLanguageChange = (newLanguage) => {
         setLanguage(newLanguage);
         i18n.changeLanguage(newLanguage);
+        updateSettings({ language: newLanguage });
         localStorage.setItem('language', newLanguage);
+    };
+
+    const handleCurrencyChange = (newCurrency) => {
+        setCurrency(newCurrency);
+        updateSettings({ currency: newCurrency });
+    };
+
+    const handleNotificationsChange = (enabled) => {
+        setNotifications(enabled);
+        localStorage.setItem('notifications', enabled.toString());
+        if (enabled && 'Notification' in window) {
+            Notification.requestPermission();
+        }
     };
 
     const handleLogout = async () => {
@@ -76,7 +102,7 @@ export default function Settings() {
                     <Card className="bg-white dark:bg-gray-800">
                         <CardHeader>
                             <CardTitle className="flex items-center gap-2">
-                                <Sun className="w-5 h-5" />
+                                {darkMode ? <Moon className="w-5 h-5" /> : <Sun className="w-5 h-5" />}
                                 Appearance
                             </CardTitle>
                         </CardHeader>
@@ -94,7 +120,7 @@ export default function Settings() {
                         </CardContent>
                     </Card>
 
-                    {/* Language */}
+                    {/* Language & Region */}
                     <Card className="bg-white dark:bg-gray-800">
                         <CardHeader>
                             <CardTitle className="flex items-center gap-2">
@@ -102,7 +128,7 @@ export default function Settings() {
                                 Language & Region
                             </CardTitle>
                         </CardHeader>
-                        <CardContent>
+                        <CardContent className="space-y-6">
                             <div className="flex items-center justify-between">
                                 <div>
                                     <p className="font-medium">Language</p>
@@ -117,6 +143,28 @@ export default function Settings() {
                                         <SelectItem value="es">Español</SelectItem>
                                         <SelectItem value="fr">Français</SelectItem>
                                         <SelectItem value="de">Deutsch</SelectItem>
+                                        <SelectItem value="hi">हिन्दी</SelectItem>
+                                    </SelectContent>
+                                </Select>
+                            </div>
+                            
+                            <div className="flex items-center justify-between">
+                                <div>
+                                    <p className="font-medium">Currency</p>
+                                    <p className="text-sm text-gray-500">Choose your preferred currency</p>
+                                </div>
+                                <Select value={currency} onValueChange={handleCurrencyChange}>
+                                    <SelectTrigger className="w-32">
+                                        <SelectValue />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="INR">₹ INR</SelectItem>
+                                        <SelectItem value="USD">$ USD</SelectItem>
+                                        <SelectItem value="EUR">€ EUR</SelectItem>
+                                        <SelectItem value="GBP">£ GBP</SelectItem>
+                                        <SelectItem value="JPY">¥ JPY</SelectItem>
+                                        <SelectItem value="CAD">$ CAD</SelectItem>
+                                        <SelectItem value="AUD">$ AUD</SelectItem>
                                     </SelectContent>
                                 </Select>
                             </div>
@@ -139,7 +187,7 @@ export default function Settings() {
                                 </div>
                                 <Switch
                                     checked={notifications}
-                                    onCheckedChange={setNotifications}
+                                    onCheckedChange={handleNotificationsChange}
                                 />
                             </div>
                         </CardContent>
@@ -154,12 +202,48 @@ export default function Settings() {
                             </CardTitle>
                         </CardHeader>
                         <CardContent className="space-y-4">
-                            <Button variant="outline" className="w-full justify-start">
-                                <Key className="w-5 h-5 mr-3 text-red-500" />
-                                <div className="text-left">
-                                    <p className="font-medium">Change Password</p>
-                                    <p className="text-xs text-gray-500">Update your account password</p>
+                            <Button variant="outline" className="w-full justify-between p-4 h-auto">
+                                <div className="flex items-center">
+                                    <Key className="w-5 h-5 mr-3 text-red-500" />
+                                    <div className="text-left">
+                                        <p className="font-medium">Change Password</p>
+                                        <p className="text-xs text-gray-500">Update your account password</p>
+                                    </div>
                                 </div>
+                                <ChevronRight className="w-4 h-4 text-gray-400" />
+                            </Button>
+                        </CardContent>
+                    </Card>
+
+                    {/* Data & Privacy */}
+                    <Card className="bg-white dark:bg-gray-800">
+                        <CardHeader>
+                            <CardTitle className="flex items-center gap-2">
+                                <Shield className="w-5 h-5" />
+                                Data & Privacy
+                            </CardTitle>
+                        </CardHeader>
+                        <CardContent className="space-y-4">
+                            <Button variant="outline" className="w-full justify-between p-4 h-auto">
+                                <div className="flex items-center">
+                                    <DollarSign className="w-5 h-5 mr-3 text-green-500" />
+                                    <div className="text-left">
+                                        <p className="font-medium">Export Data</p>
+                                        <p className="text-xs text-gray-500">Download all your data</p>
+                                    </div>
+                                </div>
+                                <ChevronRight className="w-4 h-4 text-gray-400" />
+                            </Button>
+                            
+                            <Button variant="outline" className="w-full justify-between p-4 h-auto">
+                                <div className="flex items-center">
+                                    <Trash2 className="w-5 h-5 mr-3 text-orange-500" />
+                                    <div className="text-left">
+                                        <p className="font-medium">Clear Cache</p>
+                                        <p className="text-xs text-gray-500">Clear local storage and cache</p>
+                                    </div>
+                                </div>
+                                <ChevronRight className="w-4 h-4 text-gray-400" />
                             </Button>
                         </CardContent>
                     </Card>
@@ -175,26 +259,32 @@ export default function Settings() {
                         <CardContent className="space-y-4">
                             <Button 
                                 variant="outline" 
-                                className="w-full justify-start"
+                                className="w-full justify-between p-4 h-auto"
                                 onClick={handleLogout}
                             >
-                                <LogOut className="w-5 h-5 mr-3 text-blue-500" />
-                                <div className="text-left">
-                                    <p className="font-medium">Log Out</p>
-                                    <p className="text-xs text-gray-500">Sign out of your account</p>
+                                <div className="flex items-center">
+                                    <LogOut className="w-5 h-5 mr-3 text-blue-500" />
+                                    <div className="text-left">
+                                        <p className="font-medium">Log Out</p>
+                                        <p className="text-xs text-gray-500">Sign out of your account</p>
+                                    </div>
                                 </div>
+                                <ChevronRight className="w-4 h-4 text-gray-400" />
                             </Button>
 
                             <Button 
                                 variant="outline" 
-                                className="w-full justify-start text-red-600 hover:text-red-700 hover:bg-red-50"
+                                className="w-full justify-between p-4 h-auto text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-900/10"
                                 onClick={handleDeleteAccount}
                             >
-                                <Trash2 className="w-5 h-5 mr-3 text-red-500" />
-                                <div className="text-left">
-                                    <p className="font-medium">Delete Account</p>
-                                    <p className="text-xs text-gray-500">Permanently delete your account and data</p>
+                                <div className="flex items-center">
+                                    <Trash2 className="w-5 h-5 mr-3 text-red-500" />
+                                    <div className="text-left">
+                                        <p className="font-medium">Delete Account</p>
+                                        <p className="text-xs text-gray-500">Permanently delete your account and data</p>
+                                    </div>
                                 </div>
+                                <ChevronRight className="w-4 h-4 text-gray-400" />
                             </Button>
                         </CardContent>
                     </Card>
