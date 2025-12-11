@@ -1,4 +1,5 @@
 import { supabase } from './supabaseClient';
+import { withRateLimit } from '@/utils/rateLimiter';
 
 // Generic Supabase Entity Factory
 const createEntity = (tableName) => ({
@@ -61,7 +62,7 @@ const createEntity = (tableName) => ({
         return data;
     },
 
-    create: async (data) => {
+    create: withRateLimit(async (data) => {
         // Get current user ID
         const { data: { user }, error: authError } = await supabase.auth.getUser();
 
@@ -92,7 +93,7 @@ const createEntity = (tableName) => ({
         }
 
         return newItem;
-    },
+    }, `create_${tableName}`, 30, 60000), // 30 creates per minute
 
     update: async (id, data) => {
         const { data: updatedItem, error } = await supabase
