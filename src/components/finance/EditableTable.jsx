@@ -5,7 +5,7 @@ import { Plus, Trash2, Save } from 'lucide-react';
 import { useSettings } from '@/context/SettingsContext';
 import { sanitizeInput, sanitizeNumber } from '@/utils/sanitize';
 
-function EditableTable({ title, columns, type, data = [], onDataChange }) {
+function EditableTable({ title, columns, type, data = [], onDataChange, onRowAdd, onRowUpdate, onRowDelete }) {
   const { formatCurrency } = useSettings();
   const [localData, setLocalData] = useState(data);
   const [isSaving, setIsSaving] = useState(false);
@@ -34,60 +34,49 @@ function EditableTable({ title, columns, type, data = [], onDataChange }) {
   }, [onDataChange]);
 
   const addRow = useCallback(() => {
-    const newRows = [
-      ...localData,
-      {
-        id: Math.random().toString(36).substr(2, 9),
-        col1: '',
-        col2: '',
-        col3: '',
-        editable: true,
-      },
-    ];
+    const newRow = {
+      id: crypto.randomUUID(),
+      col1: '',
+      col2: '',
+      col3: '',
+      editable: true,
+    };
+    const newRows = [...localData, newRow];
+
     setLocalData(newRows);
-    notifyDataChange(newRows);
+
+    if (onRowAdd) {
+      onRowAdd(newRow);
+    } else {
+      notifyDataChange(newRows);
+    }
+
     lastSavedDataRef.current = newRows;
-  }, [localData, notifyDataChange]);
+  }, [localData, notifyDataChange, onRowAdd]);
 
   const deleteRow = useCallback((id) => {
     if (window.confirm('Delete this row?')) {
       const newRows = localData.filter((row) => row.id !== id);
       setLocalData(newRows);
-      notifyDataChange(newRows);
+
+      if (onRowDelete) {
+        onRowDelete(id);
+      } else {
+        notifyDataChange(newRows);
+      }
+
       lastSavedDataRef.current = newRows;
     }
-  }, [localData, notifyDataChange]);
+  }, [localData, notifyDataChange, onRowDelete]);
 
   const updateCellLocal = useCallback((id, field, value) => {
-    // Update local state immediately for responsive UI
     setLocalData(prevData => {
       const newRows = prevData.map((row) =>
         row.id === id ? { ...row, [field]: value } : row
       );
-      
-      // Auto-save after a short delay for better performance
-      if (saveTimeoutRef.current) {
-        clearTimeout(saveTimeoutRef.current);
-      }
-      
-      setIsSaving(true);
-      saveTimeoutRef.current = setTimeout(() => {
-        try {
-          // Only save if data actually changed
-          if (JSON.stringify(newRows) !== JSON.stringify(lastSavedDataRef.current)) {
-            notifyDataChange(newRows);
-            lastSavedDataRef.current = newRows;
-          }
-          setIsSaving(false);
-        } catch (error) {
-          console.error('Auto-save failed:', error);
-          setIsSaving(false);
-        }
-      }, 500); // Reduced delay for faster response
-      
       return newRows;
     });
-  }, [notifyDataChange]);
+  }, []);
 
   const saveCellValue = useCallback((id, field, value) => {
     // Clear any pending auto-save
@@ -95,15 +84,13 @@ function EditableTable({ title, columns, type, data = [], onDataChange }) {
       clearTimeout(saveTimeoutRef.current);
     }
     setIsSaving(true);
-    
+
     try {
       // Sanitize input before saving
       let sanitizedValue = value;
       if (field === 'col1') {
-        // Sanitize text input
         sanitizedValue = sanitizeInput(value);
       } else if (field === 'col2' || field === 'col3') {
-        // For numbers, handle empty values and parse properly
         if (value === '' || value === null || value === undefined) {
           sanitizedValue = '';
         } else {
@@ -111,29 +98,36 @@ function EditableTable({ title, columns, type, data = [], onDataChange }) {
           sanitizedValue = isNaN(numValue) ? '' : numValue;
         }
       }
-      
+
       // Update local state with sanitized value
+      let updatedRow = null;
       setLocalData(prevData => {
-        const newRows = prevData.map((row) =>
-          row.id === id ? { ...row, [field]: sanitizedValue } : row
-        );
-        
-        // Save to parent (and localStorage) immediately on blur
-        notifyDataChange(newRows);
+        const newRows = prevData.map((row) => {
+          if (row.id === id) {
+            updatedRow = { ...row, [field]: sanitizedValue };
+            return updatedRow;
+          }
+          return row;
+        });
+
+        if (onRowUpdate && updatedRow) {
+          onRowUpdate(updatedRow);
+        } else {
+          notifyDataChange(newRows);
+        }
+
         lastSavedDataRef.current = newRows;
-        
         return newRows;
       });
-      
+
       // Show saved indicator briefly
       setTimeout(() => setIsSaving(false), 300);
     } catch (error) {
       console.error('Save failed:', error);
       setIsSaving(false);
-      // Show error to user
       alert('Failed to save data. Please try again.');
     }
-  }, [notifyDataChange]);
+  }, [notifyDataChange, onRowUpdate]);
 
   const calculatedRows = useMemo(() => {
     return localData.map((row) => {
@@ -206,7 +200,8 @@ function EditableTable({ title, columns, type, data = [], onDataChange }) {
                 {columns.map((col, idx) => (
                   <th
                     key={idx}
-                    className="text-left py-3 px-4 font-medium text-gray-600 dark:text-gray-400"
+                    className={`text-left py-3 px-4 font-medium text-gray-600 dark:text-gray-400 ${idx === 0 ? 'min-w-[150px]' : 'min-w-[100px]'
+                      }`}
                   >
                     {col}
                   </th>
@@ -233,7 +228,7 @@ function EditableTable({ title, columns, type, data = [], onDataChange }) {
                           e.target.blur();
                         }
                       }}
-                      className="w-full bg-transparent border-0 focus:outline-none focus:ring-2 focus:ring-green-500 rounded px-2 py-1"
+                      className="w-full bg-transparent border-0 focus:outline-none focus:ring-2 focus:ring-green-500 rounded px-2 py-1 min-w-[150px]"
                       placeholder={columns[0]}
                       disabled={!row.editable && row.editable !== undefined}
                     />
@@ -257,7 +252,7 @@ function EditableTable({ title, columns, type, data = [], onDataChange }) {
                           e.target.blur();
                         }
                       }}
-                      className="w-full bg-transparent border-0 focus:outline-none focus:ring-2 focus:ring-green-500 rounded px-2 py-1"
+                      className="w-full bg-transparent border-0 focus:outline-none focus:ring-2 focus:ring-green-500 rounded px-2 py-1 min-w-[100px]"
                       disabled={type === 'debt' && !row.editable && row.editable !== undefined}
                       placeholder=""
                       step="any"

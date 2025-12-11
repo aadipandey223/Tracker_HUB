@@ -21,20 +21,26 @@ export default function Finance() {
   const { formatCurrency } = useSettings();
   const queryClient = useQueryClient();
   const [currentMonth, setCurrentMonth] = useState(new Date());
-  const [incomeData, setIncomeData] = useState([]);
-  const [expenseData, setExpenseData] = useState([]);
-  const [debtData, setDebtData] = useState([]);
+  const [incomeData, setIncomeData] = useState([
+    { id: '1', col1: '', col2: '', col3: '', editable: true }
+  ]);
+  const [expenseData, setExpenseData] = useState([
+    { id: '1', col1: '', col2: '', col3: '', editable: true }
+  ]);
+  const [debtData, setDebtData] = useState([
+    { id: '1', col1: '', col2: '', col3: '', editable: true }
+  ]);
   const [totalBalance, setTotalBalance] = useState(0);
   const [isEditingBalance, setIsEditingBalance] = useState(false);
 
   const monthKey = `${currentMonth.getFullYear()}-${String(currentMonth.getMonth() + 1).padStart(2, '0')}`;
 
-  // Fetch monthly budget data
+  // Fetch monthly budget data (total balance)
   const { data: monthlyBudget, isLoading: isLoadingBudget } = useQuery({
     queryKey: ['monthlyBudget', monthKey],
     queryFn: async () => {
       const budgets = await base44.entities.MonthlyBudget.list();
-      return budgets.find(b => b.month === monthKey && b.category === 'total_balance') || null;
+      return budgets.find(b => b.month === monthKey) || null;
     },
   });
 
@@ -58,26 +64,35 @@ export default function Finance() {
           // Try to decrypt data (new format)
           const decrypted = decryptData(stored, userId);
           if (decrypted) {
-            setIncomeData(decrypted.incomeData || []);
-            setExpenseData(decrypted.expenseData || []);
-            setDebtData(decrypted.debtData || []);
+            setIncomeData(decrypted.incomeData && decrypted.incomeData.length > 0 ? decrypted.incomeData : [
+              { id: '1', col1: '', col2: '', col3: '', editable: true }
+            ]);
+            setExpenseData(decrypted.expenseData && decrypted.expenseData.length > 0 ? decrypted.expenseData : [
+              { id: '1', col1: '', col2: '', col3: '', editable: true }
+            ]);
+            setDebtData(decrypted.debtData && decrypted.debtData.length > 0 ? decrypted.debtData : [
+              { id: '1', col1: '', col2: '', col3: '', editable: true }
+            ]);
           } else {
             // Fallback to old unencrypted format
             const data = JSON.parse(stored);
-            setIncomeData(data.incomeData || []);
-            setExpenseData(data.expenseData || []);
-            setDebtData(data.debtData || []);
+            setIncomeData(data.incomeData && data.incomeData.length > 0 ? data.incomeData : [
+              { id: '1', col1: '', col2: '', col3: '', editable: true }
+            ]);
+            setExpenseData(data.expenseData && data.expenseData.length > 0 ? data.expenseData : [
+              { id: '1', col1: '', col2: '', col3: '', editable: true }
+            ]);
+            setDebtData(data.debtData && data.debtData.length > 0 ? data.debtData : [
+              { id: '1', col1: '', col2: '', col3: '', editable: true }
+            ]);
           }
         } catch (error) {
           console.error('Error loading finance data:', error);
-          setIncomeData([]);
-          setExpenseData([]);
-          setDebtData([]);
+          // Set default empty rows on error
+          setIncomeData([{ id: '1', col1: '', col2: '', col3: '', editable: true }]);
+          setExpenseData([{ id: '1', col1: '', col2: '', col3: '', editable: true }]);
+          setDebtData([{ id: '1', col1: '', col2: '', col3: '', editable: true }]);
         }
-      } else {
-        setIncomeData([]);
-        setExpenseData([]);
-        setDebtData([]);
       }
 
       if (monthlyBudget) {
@@ -96,49 +111,39 @@ export default function Finance() {
   }, [monthKey, monthlyBudget, isLoadingBudget]);
 
   const saveBudget = async (updates) => {
-    const dataToSave = {
-      month: monthKey,
-      category: 'total_balance', // Required field - using a default category for total balance
-      budget_amount: 0, // Required field - default to 0 for total balance entries
-      budget_limit: updates.totalBalance !== undefined ? updates.totalBalance : totalBalance,
-    };
-
+    // For now, just save to localStorage until database is fixed
     try {
-      // Check if user is authenticated
       const user = await base44.auth.me();
-      if (!user) {
-        alert('Please log in to save your budget data.');
-        return;
-      }
-
-      // Test database connection first
-      const budgets = await base44.entities.MonthlyBudget.list();
+      const userId = user?.id || 'anonymous';
+      const balanceKey = `total_balance_${userId}_${monthKey}`;
+      const balanceValue = updates.totalBalance !== undefined ? updates.totalBalance : totalBalance;
       
-      // Look for existing total balance entry for this month
-      const existingBudget = budgets.find(b => b.month === monthKey && b.category === 'total_balance');
-
-      if (existingBudget) {
-        await base44.entities.MonthlyBudget.update(existingBudget.id, {
-          budget_limit: dataToSave.budget_limit
-        });
-      } else {
-        await base44.entities.MonthlyBudget.create(dataToSave);
-      }
+      localStorage.setItem(balanceKey, balanceValue.toString());
+      console.log('Total balance saved to localStorage:', balanceValue);
       
-      queryClient.invalidateQueries(['monthlyBudget', monthKey]);
+      // Try database save but don't fail if it doesn't work
+      try {
+        const budgets = await base44.entities.MonthlyBudget.list();
+        const existingBudget = budgets.find(b => b.month === monthKey);
+
+        if (existingBudget) {
+          await base44.entities.MonthlyBudget.update(existingBudget.id, {
+            budget_limit: balanceValue
+          });
+        } else {
+          await base44.entities.MonthlyBudget.create({
+            month: monthKey,
+            budget_limit: balanceValue
+          });
+        }
+        queryClient.invalidateQueries(['monthlyBudget', monthKey]);
+        console.log('Total balance also saved to database');
+      } catch (dbError) {
+        console.log('Database save failed, but localStorage save succeeded:', dbError.message);
+      }
     } catch (error) {
       console.error('Error saving budget:', error);
-      
-      // Check if it's a database structure issue
-      if (error.message && error.message.includes('column') && error.message.includes('does not exist')) {
-        console.error('Database table structure issue:', error.message);
-        throw new Error('Database table needs to be updated. Please contact support.');
-      } else if (error.message && error.message.includes('null value in column')) {
-        console.error('Missing required field:', error.message);
-        throw new Error('Missing required data. Please try again.');
-      } else {
-        throw error; // Re-throw to be handled by handleBalanceChange
-      }
+      throw error;
     }
   };
 
@@ -202,7 +207,7 @@ export default function Finance() {
         alert('Saved locally. Database connection issue - will sync when connection is restored.');
       } catch (fallbackError) {
         console.error('Fallback save failed:', fallbackError);
-        alert('Failed to save total balance. Please check your connection and try again.');
+        alert('Failed to save total balance. Please run the database recreation script in Supabase or check your connection.');
       }
     }
   };
@@ -221,7 +226,6 @@ export default function Finance() {
       const paid = parseFloat(row.col3) || 0;
       return sum + (total - paid);
     }, 0);
-    const plannedIncome = incomeData.reduce((sum, row) => sum + (parseFloat(row.col2) || 0), 0);
 
     // Savings Rate = (Income - Expenses - Debt Paid) / Income * 100
     const totalOutflow = expenses + totalDebtPaid;
@@ -325,15 +329,15 @@ export default function Finance() {
         <div className="mb-8 flex items-center justify-between">
           <div>
             <h1 className="text-4xl font-bold text-gray-900 dark:text-white mb-2">
-              {t('finance.title')}
+              Finance Tracker
             </h1>
             <p className="text-gray-600 dark:text-gray-400">
-              {t('finance.subtitle')}
+              Track your income, expenses, and budget
             </p>
           </div>
           <Button id="finance-export-btn" className="gap-2 bg-green-600 hover:bg-green-700" onClick={exportData}>
             <Download className="w-4 h-4" />
-            {t('finance.exportData')}
+            Export Data
           </Button>
         </div>
 
@@ -364,7 +368,7 @@ export default function Finance() {
             <Card className="bg-white dark:bg-gray-800 border-green-200 dark:border-green-800">
               <CardHeader className="pb-2">
                 <CardTitle className="text-sm font-medium text-gray-600 dark:text-gray-400">
-                  {t('finance.income')}
+                  Income
                 </CardTitle>
               </CardHeader>
               <CardContent>
@@ -377,7 +381,7 @@ export default function Finance() {
             <Card className="bg-white dark:bg-gray-800 border-red-200 dark:border-red-800">
               <CardHeader className="pb-2">
                 <CardTitle className="text-sm font-medium text-gray-600 dark:text-gray-400">
-                  {t('finance.expenses')}
+                  Expenses
                 </CardTitle>
               </CardHeader>
               <CardContent>
@@ -390,7 +394,7 @@ export default function Finance() {
             <Card className={`bg-white dark:bg-gray-800 ${metrics.balance >= 0 ? 'border-blue-200 dark:border-blue-800' : 'border-red-200 dark:border-red-800'}`}>
               <CardHeader className="pb-2">
                 <CardTitle className="text-sm font-medium text-gray-600 dark:text-gray-400">
-                  {t('finance.balance')}
+                  Balance
                 </CardTitle>
               </CardHeader>
               <CardContent>
@@ -403,7 +407,7 @@ export default function Finance() {
             <Card className="bg-white dark:bg-gray-800 border-purple-200 dark:border-purple-800">
               <CardHeader className="pb-2">
                 <CardTitle className="text-sm font-medium text-gray-600 dark:text-gray-400">
-                  {t('finance.totalBalance')}
+                  Total Balance
                 </CardTitle>
               </CardHeader>
               <CardContent>
@@ -448,7 +452,7 @@ export default function Finance() {
             <Card className="bg-white dark:bg-gray-800 border-orange-200 dark:border-orange-800">
               <CardHeader className="pb-2">
                 <CardTitle className="text-sm font-medium text-gray-600 dark:text-gray-400">
-                  {t('finance.debt')}
+                  Debt
                 </CardTitle>
               </CardHeader>
               <CardContent>
@@ -461,7 +465,7 @@ export default function Finance() {
             <Card className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
               <CardHeader className="pb-2">
                 <CardTitle className="text-sm font-medium text-gray-600 dark:text-gray-400">
-                  {t('finance.savingsRate')}
+                  Savings Rate
                 </CardTitle>
               </CardHeader>
               <CardContent>
@@ -482,17 +486,17 @@ export default function Finance() {
 
         <div id="finance-charts" className="mb-8 grid grid-cols-1 md:grid-cols-3 gap-6">
           <FinanceChart
-            title={t('finance.expensesByCategory')}
+            title="Expenses by Category"
             data={expensesByCategory}
             defaultType="pie"
           />
           <FinanceChart
-            title={t('finance.incomeVsExpenses')}
+            title="Income vs Expenses"
             data={incomeVsExpenses}
             defaultType="bar"
           />
           <FinanceChart
-            title={t('finance.incomeByCategory')}
+            title="Income by Category"
             data={incomeByCategory}
             defaultType="pie"
           />
@@ -501,24 +505,24 @@ export default function Finance() {
         <div id="finance-tables" className="space-y-6 mb-8">
           <EditableTable
             key={`expense-${monthKey}`}
-            title={t('finance.plannedExpenses')}
-            columns={[t('finance.category'), t('finance.planned'), t('finance.actual'), t('finance.variance'), t('finance.variancePercent')]}
+            title="Planned Expenses"
+            columns={['Category', 'Planned', 'Actual', 'Variance', 'Variance %']}
             type="expense"
             data={expenseData}
             onDataChange={handleExpenseChange}
           />
           <EditableTable
             key={`income-${monthKey}`}
-            title={t('finance.plannedIncome')}
-            columns={[t('finance.source'), t('finance.planned'), t('finance.actual'), t('finance.variance'), t('finance.variancePercent')]}
+            title="Planned Income"
+            columns={['Source', 'Planned', 'Actual', 'Variance', 'Variance %']}
             type="income"
             data={incomeData}
             onDataChange={handleIncomeChange}
           />
           <EditableTable
             key={`debt-${monthKey}`}
-            title={t('finance.debtTracker')}
-            columns={[t('finance.source'), t('finance.totalDebt'), t('finance.paid'), t('finance.outstanding'), t('finance.progressPercent')]}
+            title="Debt Tracker"
+            columns={['Source', 'Total Debt', 'Paid', 'Outstanding', 'Progress %']}
             type="debt"
             data={debtData}
             onDataChange={handleDebtChange}

@@ -90,20 +90,20 @@ export default function FinanceSummaryCard({ transactions = [], debts = [], fina
         <CardTitle className="flex items-center justify-between">
           <span className="flex items-center gap-2">
             <Wallet className="w-5 h-5 text-green-600" />
-            {t('dashboard.financeTracker')}
+            Finance Tracker
           </span>
-          <span className="text-sm font-normal text-gray-500 dark:text-gray-400">{t('dashboard.thisMonth')}</span>
+          <span className="text-sm font-normal text-gray-500 dark:text-gray-400">This Month</span>
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-6">
         {/* Current Balance */}
         <div className="text-center p-6 rounded-xl bg-gradient-to-r from-green-500 to-emerald-600 text-white">
-          <p className="text-sm opacity-90 mb-2">{t('dashboard.currentBalance')}</p>
+          <p className="text-sm opacity-90 mb-2">Current Balance</p>
           <p className="text-4xl font-bold">
             {formatCurrency(balance)}
           </p>
           <p className="text-sm opacity-90 mt-2">
-            {savingsRate.toFixed(1)}% {t('dashboard.savingsRate')}
+            {savingsRate.toFixed(1)}% savings rate
           </p>
         </div>
 
@@ -112,7 +112,7 @@ export default function FinanceSummaryCard({ transactions = [], debts = [], fina
           <div className="p-4 rounded-lg bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800">
             <div className="flex items-center gap-2 mb-2">
               <TrendingUp className="w-4 h-4 text-blue-600" />
-              <span className="text-sm text-gray-600 dark:text-gray-400">{t('dashboard.income')}</span>
+              <span className="text-sm text-gray-600 dark:text-gray-400">Income</span>
             </div>
             <p className="text-2xl font-bold text-blue-600">
               {formatCurrency(totalIncome)}
@@ -122,7 +122,7 @@ export default function FinanceSummaryCard({ transactions = [], debts = [], fina
           <div className="p-4 rounded-lg bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800">
             <div className="flex items-center gap-2 mb-2">
               <TrendingDown className="w-4 h-4 text-red-600" />
-              <span className="text-sm text-gray-600 dark:text-gray-400">{t('dashboard.expenses')}</span>
+              <span className="text-sm text-gray-600 dark:text-gray-400">Expenses</span>
             </div>
             <p className="text-2xl font-bold text-red-600">
               {formatCurrency(totalExpenses)}
@@ -132,7 +132,7 @@ export default function FinanceSummaryCard({ transactions = [], debts = [], fina
           <div className="p-4 rounded-lg bg-purple-50 dark:bg-purple-900/20 border border-purple-200 dark:border-purple-800">
             <div className="flex items-center gap-2 mb-2">
               <DollarSign className="w-4 h-4 text-purple-600" />
-              <span className="text-sm text-gray-600 dark:text-gray-400">{t('dashboard.totalBalance')}</span>
+              <span className="text-sm text-gray-600 dark:text-gray-400">Total Balance</span>
             </div>
             <p className="text-2xl font-bold text-purple-600">
               {formatCurrency(totalBalance)}
@@ -143,7 +143,7 @@ export default function FinanceSummaryCard({ transactions = [], debts = [], fina
         {/* Top Expense Category */}
         {topExpenseCategory && (
           <div className="space-y-2">
-            <h4 className="text-sm font-semibold text-gray-700 dark:text-gray-300">{t('dashboard.topExpense')}</h4>
+            <h4 className="text-sm font-semibold text-gray-700 dark:text-gray-300">Top Expense Category</h4>
             <div className="flex justify-between items-center p-3 rounded-lg bg-gray-50 dark:bg-gray-800">
               <span className="text-sm text-gray-600 dark:text-gray-400 capitalize">
                 {topExpenseCategory[0]}

@@ -20,15 +20,76 @@ export default function Dashboard() {
     queryFn: () => base44.entities.Task.list('-due_date', 100),
   });
 
-  const { data: transactions = [] } = useQuery({
-    queryKey: ['transactions'],
-    queryFn: () => base44.entities.FinanceTransaction.list('-date', 200),
-  });
+  // Finance data state
+  const [financeData, setFinanceData] = useState(null);
+  const [totalBalance, setTotalBalance] = useState(0);
+  
+  // Add transactions as empty array to prevent errors
+  const transactions = [];
 
-  const { data: debts = [] } = useQuery({
-    queryKey: ['debts'],
-    queryFn: () => base44.entities.Debt.list(),
-  });
+  // Load finance data from localStorage
+  useEffect(() => {
+    const loadFinanceData = async () => {
+      try {
+        const user = await base44.auth.me();
+        const userId = user?.id || 'anonymous';
+        const currentMonth = new Date();
+        const monthKey = `${currentMonth.getFullYear()}-${String(currentMonth.getMonth() + 1).padStart(2, '0')}`;
+        
+        // Load table data from localStorage
+        const storageKey = `finance_data_${userId}_${monthKey}`;
+        const stored = localStorage.getItem(storageKey);
+        
+        if (stored) {
+          try {
+            // Try to decrypt data (new format)
+            const { decryptData } = await import('@/utils/encryption');
+            const decrypted = decryptData(stored, userId);
+            if (decrypted) {
+              setFinanceData(decrypted);
+            } else {
+              // Fallback to old unencrypted format
+              const data = JSON.parse(stored);
+              setFinanceData(data);
+            }
+          } catch (error) {
+            console.error('Error loading finance data:', error);
+            // Set empty data structure
+            setFinanceData({
+              incomeData: [],
+              expenseData: [],
+              debtData: []
+            });
+          }
+        } else {
+          // Set empty data structure
+          setFinanceData({
+            incomeData: [],
+            expenseData: [],
+            debtData: []
+          });
+        }
+
+        // Load total balance
+        const balanceKey = `total_balance_${userId}_${monthKey}`;
+        const storedBalance = localStorage.getItem(balanceKey);
+        if (storedBalance) {
+          const numValue = parseFloat(storedBalance);
+          setTotalBalance(isNaN(numValue) ? 0 : numValue);
+        }
+      } catch (error) {
+        console.error('Error loading finance data:', error);
+        setFinanceData({
+          incomeData: [],
+          expenseData: [],
+          debtData: []
+        });
+        setTotalBalance(0);
+      }
+    };
+
+    loadFinanceData();
+  }, []);
 
   // Fetch habit logs for the current week
   const { data: habitLogs = [] } = useQuery({
@@ -49,39 +110,8 @@ export default function Dashboard() {
   });
 
   // Fetch finance data from localStorage (blob format)
-  const [financeData, setFinanceData] = useState(null);
-  const [totalBalance, setTotalBalance] = useState(0);
 
-  useEffect(() => {
-    const fetchFinanceData = async () => {
-      try {
-        const user = await base44.auth.me();
-        const userId = user?.id || 'anonymous';
-        const today = new Date();
-        const monthKey = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}`;
 
-        const storageKey = `finance_data_${userId}_${monthKey}`;
-        const stored = localStorage.getItem(storageKey);
-
-        if (stored) {
-          setFinanceData(JSON.parse(stored));
-        }
-
-        // Fetch Monthly Budget (Total Balance)
-        const budgets = await base44.entities.MonthlyBudget.list();
-        const budget = budgets.find(b => b.month === monthKey);
-        if (budget) {
-          setTotalBalance(budget.budget_limit || 0);
-        } else {
-          setTotalBalance(0);
-        }
-      } catch (error) {
-        console.error('Error fetching finance data:', error);
-      }
-    };
-
-    fetchFinanceData();
-  }, []);
 
   // Scroll animations
   useEffect(() => {
@@ -136,22 +166,22 @@ export default function Dashboard() {
           <div className="text-center space-y-6">
             <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white/20 backdrop-blur-sm text-white text-sm font-medium">
               <Sparkles className="w-4 h-4" />
-              {t('dashboard.badge')}
+              Welcome to Tracker Hub
             </div>
             <h1 className="text-4xl md:text-6xl font-bold text-white leading-tight">
-              {t('dashboard.title')}<br />
-              {t('dashboard.subtitle')}
+              Your Tracking<br />
+              Dashboard
             </h1>
             <p className="text-xl text-orange-100 max-w-2xl mx-auto">
-              {t('dashboard.description')}
+              Get a comprehensive view of your progress across all areas of life
             </p>
             <div className="flex gap-4 justify-center pt-4">
               <Button size="lg" className="bg-white text-orange-600 hover:bg-orange-50" onClick={startTour}>
-                {t('dashboard.getStarted')}
+                Get Started
                 <ArrowRight className="ml-2 w-4 h-4" />
               </Button>
               <Button size="lg" variant="outline" className="bg-transparent border-white text-white hover:bg-white/10 hover:text-white" onClick={() => window.open('https://aadipandey223.github.io/Portfolio/', '_blank')}>
-                {t('dashboard.learnMore')}
+                Learn More
               </Button>
             </div>
           </div>
@@ -164,10 +194,10 @@ export default function Dashboard() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
             {[
-              { label: t('dashboard.totalTasks'), value: tasks.length, color: 'blue' },
-              { label: t('dashboard.transactions'), value: transactions.length, color: 'green' },
+              { label: 'Total Tasks', value: tasks.length, color: 'blue' },
+              { label: 'Finance Entries', value: financeData ? (financeData.incomeData?.length || 0) + (financeData.expenseData?.length || 0) : 0, color: 'green' },
               {
-                label: t('dashboard.thisWeek'), value: tasks.filter(t => {
+                label: 'This Week', value: tasks.filter(t => {
                   const today = new Date();
                   const startOfWeek = new Date(today);
                   startOfWeek.setDate(today.getDate() - today.getDay());
@@ -196,10 +226,10 @@ export default function Dashboard() {
       <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16 space-y-8">
         <div className="text-center mb-12">
           <h2 className="text-3xl md:text-4xl font-bold text-gray-900 dark:text-white mb-4">
-            {t('dashboard.trackingDashboard')}
+            Your Tracking Dashboard
           </h2>
           <p className="text-lg text-gray-600 dark:text-gray-400 max-w-2xl mx-auto">
-            {t('dashboard.trackingDescription')}
+            Get a comprehensive view of your progress across all areas of life
           </p>
         </div>
 
@@ -209,7 +239,7 @@ export default function Dashboard() {
           </div>
 
           <div ref={(el) => (cardsRef.current[1] = el)} className="card-container" style={{ animationDelay: '0.1s' }}>
-            <FinanceSummaryCard transactions={transactions} debts={debts} financeData={financeData} totalBalance={totalBalance} />
+            <FinanceSummaryCard financeData={financeData} totalBalance={totalBalance} />
           </div>
 
           <div ref={(el) => (cardsRef.current[2] = el)} className="card-container" style={{ animationDelay: '0.2s' }}>
@@ -222,13 +252,13 @@ export default function Dashboard() {
       <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
         <div className="bg-gradient-to-r from-orange-500 to-orange-600 dark:from-orange-700 dark:to-orange-600 rounded-3xl p-12 text-center text-white">
           <h2 className="text-3xl md:text-4xl font-bold mb-4">
-            {t('dashboard.ctaTitle')}
+            Ready to Transform Your Life?
           </h2>
           <p className="text-xl text-orange-100 mb-8 max-w-2xl mx-auto">
-            {t('dashboard.ctaDescription')}
+            Start tracking your habits, tasks, finances, and goals today
           </p>
           <Button size="lg" className="bg-white text-orange-600 hover:bg-orange-50" onClick={startTour}>
-            {t('dashboard.ctaButton')}
+            Start Your Journey
             <ArrowRight className="ml-2 w-5 h-5" />
           </Button>
         </div>
