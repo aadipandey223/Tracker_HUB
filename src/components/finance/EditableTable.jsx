@@ -1,18 +1,28 @@
-import { useMemo, useCallback, useState } from 'react';
+import { useMemo, useCallback, useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Plus, Trash2 } from 'lucide-react';
+import { Plus, Trash2, Save } from 'lucide-react';
 import { useSettings } from '@/context/SettingsContext';
 import { sanitizeInput, sanitizeNumber } from '@/utils/sanitize';
 
 function EditableTable({ title, columns, type, data = [], onDataChange }) {
   const { formatCurrency } = useSettings();
   const [localData, setLocalData] = useState(data);
+  const [isSaving, setIsSaving] = useState(false);
 
   // Sync local data when prop data changes (e.g., month navigation)
   useMemo(() => {
     setLocalData(data);
   }, [data]);
+
+  // Cleanup timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (window.autoSaveTimeout) {
+        clearTimeout(window.autoSaveTimeout);
+      }
+    };
+  }, []);
 
   const notifyDataChange = useCallback((newRows) => {
     if (onDataChange) {
@@ -49,24 +59,47 @@ function EditableTable({ title, columns, type, data = [], onDataChange }) {
       row.id === id ? { ...row, [field]: value } : row
     );
     setLocalData(newRows);
+    
+    // Auto-save after a short delay for better performance
+    clearTimeout(window.autoSaveTimeout);
+    setIsSaving(true);
+    window.autoSaveTimeout = setTimeout(() => {
+      notifyDataChange(newRows);
+      setIsSaving(false);
+    }, 500);
   };
 
   const saveCellValue = (id, field, value) => {
+    // Clear any pending auto-save
+    clearTimeout(window.autoSaveTimeout);
+    setIsSaving(true);
+    
     // Sanitize input before saving
     let sanitizedValue = value;
     if (field === 'col1') {
       // Sanitize text input
       sanitizedValue = sanitizeInput(value);
     } else if (field === 'col2' || field === 'col3') {
-      // Sanitize number input
-      sanitizedValue = value === '' ? '' : sanitizeNumber(value);
+      // For numbers, keep the raw value if it's valid
+      if (value === '' || value === null || value === undefined) {
+        sanitizedValue = '';
+      } else {
+        const numValue = parseFloat(value);
+        sanitizedValue = isNaN(numValue) ? '' : numValue;
+      }
     }
     
-    // Save to parent (and localStorage) only on blur
+    // Update local state with sanitized value
     const newRows = localData.map((row) =>
       row.id === id ? { ...row, [field]: sanitizedValue } : row
     );
+    setLocalData(newRows);
+    
+    // Save to parent (and localStorage) immediately on blur
     notifyDataChange(newRows);
+    
+    // Show saved indicator briefly
+    setTimeout(() => setIsSaving(false), 200);
   };
 
   const calculatedRows = useMemo(() => {
@@ -114,7 +147,15 @@ function EditableTable({ title, columns, type, data = [], onDataChange }) {
   return (
     <Card id={`table-${type}`} className="bg-white dark:bg-gray-800">
       <CardHeader className="flex flex-row items-center justify-between">
-        <CardTitle>{title}</CardTitle>
+        <div className="flex items-center gap-2">
+          <CardTitle>{title}</CardTitle>
+          {isSaving && (
+            <div className="flex items-center gap-1 text-sm text-green-600">
+              <Save className="w-3 h-3 animate-pulse" />
+              <span>Saving...</span>
+            </div>
+          )}
+        </div>
         <Button
           onClick={addRow}
           className="gap-2 bg-green-600 hover:bg-green-700"
@@ -164,13 +205,16 @@ function EditableTable({ title, columns, type, data = [], onDataChange }) {
                       type="number"
                       value={row.col2}
                       onChange={(e) => updateCellLocal(row.id, 'col2', e.target.value)}
-                      onBlur={(e) => {
-                        const val = e.target.value === '' ? '' : parseFloat(e.target.value) || '';
-                        saveCellValue(row.id, 'col2', val);
+                      onBlur={(e) => saveCellValue(row.id, 'col2', e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') {
+                          e.target.blur();
+                        }
                       }}
                       className="w-full bg-transparent border-0 focus:outline-none focus:ring-2 focus:ring-green-500 rounded px-2 py-1"
                       disabled={type === 'debt' && !row.editable && row.editable !== undefined}
                       placeholder="0"
+                      step="any"
                     />
                   </td>
                   <td className="py-3 px-4">
@@ -178,13 +222,16 @@ function EditableTable({ title, columns, type, data = [], onDataChange }) {
                       type="number"
                       value={row.col3}
                       onChange={(e) => updateCellLocal(row.id, 'col3', e.target.value)}
-                      onBlur={(e) => {
-                        const val = e.target.value === '' ? '' : parseFloat(e.target.value) || '';
-                        saveCellValue(row.id, 'col3', val);
+                      onBlur={(e) => saveCellValue(row.id, 'col3', e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') {
+                          e.target.blur();
+                        }
                       }}
                       className="w-full bg-transparent border-0 focus:outline-none focus:ring-2 focus:ring-green-500 rounded px-2 py-1"
                       disabled={type === 'debt' && !row.editable && row.editable !== undefined}
                       placeholder="0"
+                      step="any"
                     />
                   </td>
                   <td className={`py-3 px-4 font-medium ${getVarianceColor(row.variance, row.variancePercent)}`}>

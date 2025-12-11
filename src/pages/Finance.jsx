@@ -356,12 +356,29 @@ export default function Finance() {
                   <input
                     type="number"
                     value={totalBalance}
-                    onChange={(e) => handleBalanceChange(parseFloat(e.target.value) || 0)}
-                    onBlur={() => setIsEditingBalance(false)}
+                    onChange={(e) => {
+                      const value = e.target.value;
+                      if (value === '' || value === null) {
+                        setTotalBalance(0);
+                      } else {
+                        const numValue = parseFloat(value);
+                        if (!isNaN(numValue)) {
+                          setTotalBalance(numValue);
+                        }
+                      }
+                    }}
+                    onBlur={() => {
+                      setIsEditingBalance(false);
+                      handleBalanceChange(totalBalance);
+                    }}
                     onKeyDown={(e) => {
-                      if (e.key === 'Enter') setIsEditingBalance(false);
+                      if (e.key === 'Enter') {
+                        setIsEditingBalance(false);
+                        handleBalanceChange(totalBalance);
+                      }
                     }}
                     autoFocus
+                    step="any"
                     className="text-2xl font-bold text-purple-600 bg-transparent border-0 border-b-2 border-purple-600 focus:outline-none w-full"
                   />
                 ) : (
