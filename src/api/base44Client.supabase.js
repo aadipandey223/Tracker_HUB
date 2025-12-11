@@ -89,6 +89,10 @@ const createEntity = (tableName) => ({
 
         if (error) {
             console.error(`Error creating ${tableName}:`, error);
+            if (error.code === '42P01') {
+                console.error(`Table '${tableName}' does not exist in Supabase. Please run the supabase_setup.sql script.`);
+                throw new Error(`Database table '${tableName}' missing. Please run the setup script.`);
+            }
             throw error;
         }
 
@@ -210,6 +214,31 @@ export const base44 = {
         },
         onAuthStateChange: (callback) => {
             return supabase.auth.onAuthStateChange(callback);
+        }
+    },
+    storage: {
+        upload: async (bucket, path, file) => {
+            const { data, error } = await supabase.storage
+                .from(bucket)
+                .upload(path, file, {
+                    cacheControl: '3600',
+                    upsert: true
+                });
+            if (error) throw error;
+            return data;
+        },
+        delete: async (bucket, paths) => {
+            const { data, error } = await supabase.storage
+                .from(bucket)
+                .remove(paths);
+            if (error) throw error;
+            return data;
+        },
+        getPublicUrl: (bucket, path) => {
+            const { data } = supabase.storage
+                .from(bucket)
+                .getPublicUrl(path);
+            return data.publicUrl;
         }
     },
     integrations: {

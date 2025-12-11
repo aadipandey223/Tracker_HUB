@@ -15,6 +15,8 @@ export default function Layout({ children }) {
   const navigate = useNavigate();
   const location = useLocation();
 
+  const [user, setUser] = useState(null);
+
   useEffect(() => {
     const savedTheme = localStorage.getItem('theme');
     const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
@@ -24,6 +26,17 @@ export default function Layout({ children }) {
     if (shouldBeDark) {
       document.documentElement.classList.add('dark');
     }
+
+    // Fetch user for avatar
+    const loadUser = async () => {
+      try {
+        const userData = await base44.auth.me();
+        setUser(userData);
+      } catch (e) {
+        console.error(e);
+      }
+    };
+    loadUser();
   }, []);
 
   const toggleTheme = () => {
@@ -61,6 +74,8 @@ export default function Layout({ children }) {
   const isActivePath = (path) => {
     return location.pathname === path;
   };
+
+  const avatarUrl = user?.user_metadata?.avatar_url;
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-900 dark:via-gray-800 dark:to-orange-800 transition-colors duration-500 relative pb-20 md:pb-0">
@@ -127,8 +142,12 @@ export default function Layout({ children }) {
 
             <div className="flex items-center gap-2">
               <Link to={createPageUrl('profile')}>
-                <Button variant="ghost" size="icon" className="rounded-full" title="Profile">
-                  <User className="h-5 w-5 text-gray-700 dark:text-gray-300" />
+                <Button variant="ghost" size="icon" className="rounded-full overflow-hidden" title="Profile">
+                  {avatarUrl ? (
+                    <img src={avatarUrl} alt="Profile" className="w-full h-full object-cover" />
+                  ) : (
+                    <User className="h-5 w-5 text-gray-700 dark:text-gray-300" />
+                  )}
                 </Button>
               </Link>
               <Link to={createPageUrl('settings')}>
@@ -185,8 +204,8 @@ export default function Layout({ children }) {
                 key={item.path}
                 to={item.path}
                 className={`flex flex-col items-center justify-center flex-1 h-full py-2 px-1 transition-all duration-200 ${isActive
-                    ? 'text-orange-600 dark:text-orange-500'
-                    : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'
+                  ? 'text-orange-600 dark:text-orange-500'
+                  : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'
                   }`}
               >
                 <div className={`relative ${isActive ? 'scale-110' : ''} transition-transform duration-200`}>

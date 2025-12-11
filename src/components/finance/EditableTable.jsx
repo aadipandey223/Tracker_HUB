@@ -1,4 +1,4 @@
-import { useMemo, useCallback, useState, useEffect } from 'react';
+import { useMemo, useCallback, useState, useEffect, useRef } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Plus, Trash2, Save } from 'lucide-react';
@@ -9,17 +9,20 @@ function EditableTable({ title, columns, type, data = [], onDataChange }) {
   const { formatCurrency } = useSettings();
   const [localData, setLocalData] = useState(data);
   const [isSaving, setIsSaving] = useState(false);
+  const saveTimeoutRef = useRef(null);
+  const lastSavedDataRef = useRef(null);
 
   // Sync local data when prop data changes (e.g., month navigation)
-  useMemo(() => {
+  useEffect(() => {
     setLocalData(data);
+    lastSavedDataRef.current = data;
   }, [data]);
 
   // Cleanup timeout on unmount
   useEffect(() => {
     return () => {
-      if (window.autoSaveTimeout) {
-        clearTimeout(window.autoSaveTimeout);
+      if (saveTimeoutRef.current) {
+        clearTimeout(saveTimeoutRef.current);
       }
     };
   }, []);
@@ -30,7 +33,7 @@ function EditableTable({ title, columns, type, data = [], onDataChange }) {
     }
   }, [onDataChange]);
 
-  const addRow = () => {
+  const addRow = useCallback(() => {
     const newRows = [
       ...localData,
       {
@@ -43,64 +46,94 @@ function EditableTable({ title, columns, type, data = [], onDataChange }) {
     ];
     setLocalData(newRows);
     notifyDataChange(newRows);
-  };
+    lastSavedDataRef.current = newRows;
+  }, [localData, notifyDataChange]);
 
-  const deleteRow = (id) => {
+  const deleteRow = useCallback((id) => {
     if (window.confirm('Delete this row?')) {
       const newRows = localData.filter((row) => row.id !== id);
       setLocalData(newRows);
       notifyDataChange(newRows);
+      lastSavedDataRef.current = newRows;
     }
-  };
+  }, [localData, notifyDataChange]);
 
-  const updateCellLocal = (id, field, value) => {
+  const updateCellLocal = useCallback((id, field, value) => {
     // Update local state immediately for responsive UI
-    const newRows = localData.map((row) =>
-      row.id === id ? { ...row, [field]: value } : row
-    );
-    setLocalData(newRows);
-    
-    // Auto-save after a short delay for better performance
-    clearTimeout(window.autoSaveTimeout);
-    setIsSaving(true);
-    window.autoSaveTimeout = setTimeout(() => {
-      notifyDataChange(newRows);
-      setIsSaving(false);
-    }, 500);
-  };
-
-  const saveCellValue = (id, field, value) => {
-    // Clear any pending auto-save
-    clearTimeout(window.autoSaveTimeout);
-    setIsSaving(true);
-    
-    // Sanitize input before saving
-    let sanitizedValue = value;
-    if (field === 'col1') {
-      // Sanitize text input
-      sanitizedValue = sanitizeInput(value);
-    } else if (field === 'col2' || field === 'col3') {
-      // For numbers, keep the raw value if it's valid
-      if (value === '' || value === null || value === undefined) {
-        sanitizedValue = '';
-      } else {
-        const numValue = parseFloat(value);
-        sanitizedValue = isNaN(numValue) ? '' : numValue;
+    setLocalData(prevData => {
+      const newRows = prevData.map((row) =>
+        row.id === id ? { ...row, [field]: value } : row
+      );
+      
+      // Auto-save after a short delay for better performance
+      if (saveTimeoutRef.current) {
+        clearTimeout(saveTimeoutRef.current);
       }
+      
+      setIsSaving(true);
+      saveTimeoutRef.current = setTimeout(() => {
+        try {
+          // Only save if data actually changed
+          if (JSON.stringify(newRows) !== JSON.stringify(lastSavedDataRef.current)) {
+            notifyDataChange(newRows);
+            lastSavedDataRef.current = newRows;
+          }
+          setIsSaving(false);
+        } catch (error) {
+          console.error('Auto-save failed:', error);
+          setIsSaving(false);
+        }
+      }, 500); // Reduced delay for faster response
+      
+      return newRows;
+    });
+  }, [notifyDataChange]);
+
+  const saveCellValue = useCallback((id, field, value) => {
+    // Clear any pending auto-save
+    if (saveTimeoutRef.current) {
+      clearTimeout(saveTimeoutRef.current);
     }
+    setIsSaving(true);
     
-    // Update local state with sanitized value
-    const newRows = localData.map((row) =>
-      row.id === id ? { ...row, [field]: sanitizedValue } : row
-    );
-    setLocalData(newRows);
-    
-    // Save to parent (and localStorage) immediately on blur
-    notifyDataChange(newRows);
-    
-    // Show saved indicator briefly
-    setTimeout(() => setIsSaving(false), 200);
-  };
+    try {
+      // Sanitize input before saving
+      let sanitizedValue = value;
+      if (field === 'col1') {
+        // Sanitize text input
+        sanitizedValue = sanitizeInput(value);
+      } else if (field === 'col2' || field === 'col3') {
+        // For numbers, handle empty values and parse properly
+        if (value === '' || value === null || value === undefined) {
+          sanitizedValue = '';
+        } else {
+          const numValue = parseFloat(value);
+          sanitizedValue = isNaN(numValue) ? '' : numValue;
+        }
+      }
+      
+      // Update local state with sanitized value
+      setLocalData(prevData => {
+        const newRows = prevData.map((row) =>
+          row.id === id ? { ...row, [field]: sanitizedValue } : row
+        );
+        
+        // Save to parent (and localStorage) immediately on blur
+        notifyDataChange(newRows);
+        lastSavedDataRef.current = newRows;
+        
+        return newRows;
+      });
+      
+      // Show saved indicator briefly
+      setTimeout(() => setIsSaving(false), 300);
+    } catch (error) {
+      console.error('Save failed:', error);
+      setIsSaving(false);
+      // Show error to user
+      alert('Failed to save data. Please try again.');
+    }
+  }, [notifyDataChange]);
 
   const calculatedRows = useMemo(() => {
     return localData.map((row) => {
@@ -192,9 +225,14 @@ function EditableTable({ title, columns, type, data = [], onDataChange }) {
                   <td className="py-3 px-4">
                     <input
                       type="text"
-                      value={row.col1}
+                      value={row.col1 || ''}
                       onChange={(e) => updateCellLocal(row.id, 'col1', e.target.value)}
                       onBlur={(e) => saveCellValue(row.id, 'col1', e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') {
+                          e.target.blur();
+                        }
+                      }}
                       className="w-full bg-transparent border-0 focus:outline-none focus:ring-2 focus:ring-green-500 rounded px-2 py-1"
                       placeholder={columns[0]}
                       disabled={!row.editable && row.editable !== undefined}
@@ -203,9 +241,17 @@ function EditableTable({ title, columns, type, data = [], onDataChange }) {
                   <td className="py-3 px-4">
                     <input
                       type="number"
-                      value={row.col2}
-                      onChange={(e) => updateCellLocal(row.id, 'col2', e.target.value)}
-                      onBlur={(e) => saveCellValue(row.id, 'col2', e.target.value)}
+                      value={row.col2 === '' || row.col2 === null || row.col2 === undefined ? '' : row.col2}
+                      onChange={(e) => {
+                        const value = e.target.value;
+                        // Allow empty values and partial numbers while typing
+                        updateCellLocal(row.id, 'col2', value);
+                      }}
+                      onBlur={(e) => {
+                        const value = e.target.value;
+                        // Save the final value on blur
+                        saveCellValue(row.id, 'col2', value);
+                      }}
                       onKeyDown={(e) => {
                         if (e.key === 'Enter') {
                           e.target.blur();
@@ -213,16 +259,24 @@ function EditableTable({ title, columns, type, data = [], onDataChange }) {
                       }}
                       className="w-full bg-transparent border-0 focus:outline-none focus:ring-2 focus:ring-green-500 rounded px-2 py-1"
                       disabled={type === 'debt' && !row.editable && row.editable !== undefined}
-                      placeholder="0"
+                      placeholder=""
                       step="any"
                     />
                   </td>
                   <td className="py-3 px-4">
                     <input
                       type="number"
-                      value={row.col3}
-                      onChange={(e) => updateCellLocal(row.id, 'col3', e.target.value)}
-                      onBlur={(e) => saveCellValue(row.id, 'col3', e.target.value)}
+                      value={row.col3 === '' || row.col3 === null || row.col3 === undefined ? '' : row.col3}
+                      onChange={(e) => {
+                        const value = e.target.value;
+                        // Allow empty values and partial numbers while typing
+                        updateCellLocal(row.id, 'col3', value);
+                      }}
+                      onBlur={(e) => {
+                        const value = e.target.value;
+                        // Save the final value on blur
+                        saveCellValue(row.id, 'col3', value);
+                      }}
                       onKeyDown={(e) => {
                         if (e.key === 'Enter') {
                           e.target.blur();
@@ -230,7 +284,7 @@ function EditableTable({ title, columns, type, data = [], onDataChange }) {
                       }}
                       className="w-full bg-transparent border-0 focus:outline-none focus:ring-2 focus:ring-green-500 rounded px-2 py-1"
                       disabled={type === 'debt' && !row.editable && row.editable !== undefined}
-                      placeholder="0"
+                      placeholder=""
                       step="any"
                     />
                   </td>

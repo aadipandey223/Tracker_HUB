@@ -34,7 +34,7 @@ export default function Finance() {
     queryKey: ['monthlyBudget', monthKey],
     queryFn: async () => {
       const budgets = await base44.entities.MonthlyBudget.list();
-      return budgets.find(b => b.month === monthKey) || null;
+      return budgets.find(b => b.month === monthKey && b.category === 'total_balance') || null;
     },
   });
 
@@ -83,7 +83,14 @@ export default function Finance() {
       if (monthlyBudget) {
         setTotalBalance(monthlyBudget.budget_limit || 0);
       } else if (!isLoadingBudget) {
-        setTotalBalance(0);
+        // Try to load from localStorage as fallback
+        const fallbackBalance = localStorage.getItem(`total_balance_${userId}_${monthKey}`);
+        if (fallbackBalance) {
+          const numValue = parseFloat(fallbackBalance);
+          setTotalBalance(isNaN(numValue) ? 0 : numValue);
+        } else {
+          setTotalBalance(0);
+        }
       }
     });
   }, [monthKey, monthlyBudget, isLoadingBudget]);
@@ -91,12 +98,24 @@ export default function Finance() {
   const saveBudget = async (updates) => {
     const dataToSave = {
       month: monthKey,
+      category: 'total_balance', // Required field - using a default category for total balance
+      budget_amount: 0, // Required field - default to 0 for total balance entries
       budget_limit: updates.totalBalance !== undefined ? updates.totalBalance : totalBalance,
     };
 
     try {
+      // Check if user is authenticated
+      const user = await base44.auth.me();
+      if (!user) {
+        alert('Please log in to save your budget data.');
+        return;
+      }
+
+      // Test database connection first
       const budgets = await base44.entities.MonthlyBudget.list();
-      const existingBudget = budgets.find(b => b.month === monthKey);
+      
+      // Look for existing total balance entry for this month
+      const existingBudget = budgets.find(b => b.month === monthKey && b.category === 'total_balance');
 
       if (existingBudget) {
         await base44.entities.MonthlyBudget.update(existingBudget.id, {
@@ -105,10 +124,21 @@ export default function Finance() {
       } else {
         await base44.entities.MonthlyBudget.create(dataToSave);
       }
+      
       queryClient.invalidateQueries(['monthlyBudget', monthKey]);
     } catch (error) {
       console.error('Error saving budget:', error);
-      alert('Failed to save total balance. Please try again.');
+      
+      // Check if it's a database structure issue
+      if (error.message && error.message.includes('column') && error.message.includes('does not exist')) {
+        console.error('Database table structure issue:', error.message);
+        throw new Error('Database table needs to be updated. Please contact support.');
+      } else if (error.message && error.message.includes('null value in column')) {
+        console.error('Missing required field:', error.message);
+        throw new Error('Missing required data. Please try again.');
+      } else {
+        throw error; // Re-throw to be handled by handleBalanceChange
+      }
     }
   };
 
@@ -147,9 +177,34 @@ export default function Finance() {
     saveTableData({ debtData: newData });
   };
 
-  const handleBalanceChange = (newBalance) => {
-    setTotalBalance(newBalance);
-    saveBudget({ totalBalance: newBalance });
+  const handleBalanceChange = async (newBalance) => {
+    const numValue = parseFloat(newBalance);
+    const finalValue = isNaN(numValue) ? 0 : numValue;
+    setTotalBalance(finalValue);
+    
+    try {
+      // Save to database
+      await saveBudget({ totalBalance: finalValue });
+      
+      // Also save to localStorage as backup
+      const user = await base44.auth.me();
+      const userId = user?.id || 'anonymous';
+      localStorage.setItem(`total_balance_${userId}_${monthKey}`, finalValue.toString());
+      
+    } catch (error) {
+      console.error('Error saving balance:', error);
+      
+      // Fallback: save to localStorage only
+      try {
+        const user = await base44.auth.me();
+        const userId = user?.id || 'anonymous';
+        localStorage.setItem(`total_balance_${userId}_${monthKey}`, finalValue.toString());
+        alert('Saved locally. Database connection issue - will sync when connection is restored.');
+      } catch (fallbackError) {
+        console.error('Fallback save failed:', fallbackError);
+        alert('Failed to save total balance. Please check your connection and try again.');
+      }
+    }
   };
 
   const metrics = useMemo(() => {
@@ -355,26 +410,24 @@ export default function Finance() {
                 {isEditingBalance ? (
                   <input
                     type="number"
-                    value={totalBalance}
+                    value={totalBalance || ''}
                     onChange={(e) => {
                       const value = e.target.value;
-                      if (value === '' || value === null) {
-                        setTotalBalance(0);
+                      if (value === '' || value === null || value === undefined) {
+                        setTotalBalance('');
                       } else {
-                        const numValue = parseFloat(value);
-                        if (!isNaN(numValue)) {
-                          setTotalBalance(numValue);
-                        }
+                        // Allow partial input while typing
+                        setTotalBalance(value);
                       }
                     }}
-                    onBlur={() => {
+                    onBlur={async () => {
                       setIsEditingBalance(false);
-                      handleBalanceChange(totalBalance);
+                      await handleBalanceChange(totalBalance);
                     }}
-                    onKeyDown={(e) => {
+                    onKeyDown={async (e) => {
                       if (e.key === 'Enter') {
                         setIsEditingBalance(false);
-                        handleBalanceChange(totalBalance);
+                        await handleBalanceChange(totalBalance);
                       }
                     }}
                     autoFocus

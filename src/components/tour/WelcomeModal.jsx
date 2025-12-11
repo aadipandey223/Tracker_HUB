@@ -12,11 +12,10 @@ import { Button } from "@/components/ui/button";
 import { Sparkles } from 'lucide-react';
 
 export default function WelcomeModal() {
-    const { showWelcome, setShowWelcome, startTour } = useTour();
+    const { showWelcome, setShowWelcome, startTour, skipWelcome } = useTour();
 
     const handleSkip = () => {
-        setShowWelcome(false);
-        localStorage.setItem('hasSeenTour', 'true');
+        skipWelcome();
     };
 
     return (

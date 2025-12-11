@@ -4,7 +4,7 @@ import { useTour } from '../../context/TourContext';
 import { useNavigate, useLocation } from 'react-router-dom';
 
 export default function TourGuide() {
-    const { run, setRun, stepIndex, setStepIndex, stopTour } = useTour();
+    const { run, setRun, stepIndex, setStepIndex, stopTour, completeTour } = useTour();
     const navigate = useNavigate();
     const location = useLocation();
 
@@ -330,8 +330,11 @@ export default function TourGuide() {
         const { action, index, status, type } = data;
 
         if ([STATUS.FINISHED, STATUS.SKIPPED].includes(status)) {
-            setRun(false);
-            setStepIndex(0);
+            if (status === STATUS.FINISHED) {
+                completeTour(); // Mark tour as completed
+            } else {
+                stopTour(); // Just stop without marking as completed
+            }
             navigate('/dashboard');
         } else if (type === EVENTS.STEP_AFTER) {
             const nextStepIndex = index + (action === ACTIONS.PREV ? -1 : 1);
@@ -375,7 +378,7 @@ export default function TourGuide() {
             // Add delay to allow page to render before showing next step
             setTimeout(() => {
                 setStepIndex(nextStepIndex);
-            }, 500);
+            }, 800); // Increased delay to ensure page elements are loaded
         }
     };
 

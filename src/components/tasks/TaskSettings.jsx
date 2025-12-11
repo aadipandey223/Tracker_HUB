@@ -1,20 +1,11 @@
-import { useState } from 'react';
+import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import {
   Settings, Plus, Trash2, Briefcase, Heart, DollarSign,
   Users, BookOpen, Home, Activity, Star, Sun, Moon,
-  Coffee, Gift, Music, Smartphone, Smile,
-  // New icons
-  Wrench, Shield, Sparkles, Flame, Lock, Package,
-  Snowflake, FileText, Headphones, Tv, Gamepad2, Palette,
-  Armchair, Joystick, Target, Zap, Award, Bell,
-  Camera, Car, Cloud, Compass, Crown, Database,
-  Folder, Globe, Hammer, Key, Laptop, Leaf,
-  Lightbulb, Mail, Map, Megaphone, MessageCircle,
-  PenTool, Plane, Rocket, ShoppingCart, Timer,
-  Umbrella, Utensils, Wallet, Watch, Wifi
+  Coffee, Gift, Music, Smartphone, Smile
 } from 'lucide-react';
 import {
   Dialog,
@@ -24,36 +15,12 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { Card } from '@/components/ui/card';
 
 const ICONS = {
-  // Original icons
   Briefcase, Heart, DollarSign, Users, BookOpen, Home,
   Activity, Star, Sun, Moon, Coffee, Gift, Music,
-  Smartphone, Smile,
-  // Tools & Work
-  Wrench, Hammer, PenTool, Target,
-  // Status & Highlights
-  Sparkles, Flame, Zap, Award, Crown,
-  // Security & Privacy
-  Shield, Lock, Key,
-  // Objects
-  Package, Snowflake, FileText, Folder, Database,
-  // Entertainment
-  Headphones, Tv, Gamepad2, Joystick, Camera,
-  // Creative
-  Palette, Lightbulb,
-  // Relaxation & Lifestyle
-  Armchair, Utensils, Umbrella,
-  // Travel & Transportation
-  Plane, Car, Compass, Map, Globe, Rocket,
-  // Communication
-  Bell, Mail, MessageCircle, Megaphone,
-  // Tech & Digital
-  Laptop, Wifi, Cloud, Watch, Timer,
-  // Shopping & Money
-  ShoppingCart, Wallet,
-  // Nature
-  Leaf
+  Smartphone, Smile
 };
 
 export default function TaskSettings({ categories, onAddCategory, onDeleteCategory }) {

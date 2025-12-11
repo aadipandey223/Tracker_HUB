@@ -1,30 +1,44 @@
 import React, { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
+import { toast } from 'sonner';
 import { base44 } from '@/api/base44Client.supabase';
 import { useSettings } from '@/context/SettingsContext';
+import { useTour } from '@/context/TourContext';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import {
+    Dialog,
+    DialogContent,
+    DialogDescription,
+    DialogFooter,
+    DialogHeader,
+    DialogTitle,
+} from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { 
-    Settings as SettingsIcon, 
-    Moon, 
-    Sun, 
-    Globe, 
-    Bell, 
-    Shield, 
-    Key, 
+import {
+    Settings as SettingsIcon,
+    Moon,
+    Sun,
+    Globe,
+    Bell,
+    Shield,
+    Key,
     Trash2,
     LogOut,
     Download,
-    ChevronRight
+    ChevronRight,
+    HelpCircle,
+    Mail
 } from 'lucide-react';
 
 export default function Settings() {
     const { t, i18n } = useTranslation();
     const { settings, updateSettings } = useSettings();
     const [darkMode, setDarkMode] = useState(
-        localStorage.getItem('theme') === 'dark' || 
+        localStorage.getItem('theme') === 'dark' ||
         (!localStorage.getItem('theme') && window.matchMedia('(prefers-color-scheme: dark)').matches)
     );
     const [notifications, setNotifications] = useState(
@@ -42,7 +56,7 @@ export default function Settings() {
     const getLanguageDisplay = (lang) => {
         const languages = {
             'en': '🇺🇸 English',
-            'es': '🇪🇸 Español', 
+            'es': '🇪🇸 Español',
             'fr': '🇫🇷 Français',
             'de': '🇩🇪 Deutsch',
             'hi': '🇮🇳 हिन्दी'
@@ -54,7 +68,7 @@ export default function Settings() {
         const currencies = {
             'INR': '₹ INR',
             'USD': '$ USD',
-            'EUR': '€ EUR', 
+            'EUR': '€ EUR',
             'GBP': '£ GBP',
             'JPY': '¥ JPY',
             'CAD': '$ CAD',
@@ -66,7 +80,7 @@ export default function Settings() {
     const toggleDarkMode = () => {
         const newMode = !darkMode;
         setDarkMode(newMode);
-        
+
         if (newMode) {
             document.documentElement.classList.add('dark');
             localStorage.setItem('theme', 'dark');
@@ -102,21 +116,48 @@ export default function Settings() {
         }
     };
 
+    const [isPasswordDialogOpen, setIsPasswordDialogOpen] = useState(false);
+    const [passwordForm, setPasswordForm] = useState({
+        currentPassword: '',
+        newPassword: '',
+        confirmPassword: ''
+    });
+    const [passwordError, setPasswordError] = useState('');
+    const [isChangingPassword, setIsChangingPassword] = useState(false);
+
     const handleChangePassword = async () => {
-        const newPassword = prompt('Enter your new password (minimum 6 characters):');
-        if (!newPassword) return;
-        
-        if (newPassword.length < 6) {
-            alert('Password must be at least 6 characters long.');
+        setPasswordError('');
+
+        // Validation
+        if (!passwordForm.newPassword || !passwordForm.confirmPassword) {
+            setPasswordError('Please fill in all fields');
             return;
         }
-        
+
+        if (passwordForm.newPassword.length < 6) {
+            setPasswordError('Password must be at least 6 characters long');
+            return;
+        }
+
+        if (passwordForm.newPassword !== passwordForm.confirmPassword) {
+            setPasswordError('Passwords do not match');
+            return;
+        }
+
+        setIsChangingPassword(true);
+
         try {
-            await base44.auth.updateMe({ password: newPassword });
-            alert('Password updated successfully!');
+            await base44.auth.updateMe({ password: passwordForm.newPassword });
+
+            // Reset form and close dialog
+            setPasswordForm({ currentPassword: '', newPassword: '', confirmPassword: '' });
+            setIsPasswordDialogOpen(false);
+            toast.success('Password updated successfully!');
         } catch (error) {
             console.error('Error updating password:', error);
-            alert('Failed to update password. Please try again.');
+            setPasswordError(error.message || 'Failed to update password. Please try again.');
+        } finally {
+            setIsChangingPassword(false);
         }
     };
 
@@ -204,19 +245,19 @@ export default function Settings() {
                 // Clear localStorage
                 const keysToKeep = ['theme', 'language', 'currency', 'notifications'];
                 const keysToRemove = [];
-                
+
                 for (let i = 0; i < localStorage.length; i++) {
                     const key = localStorage.key(i);
                     if (key && !keysToKeep.includes(key)) {
                         keysToRemove.push(key);
                     }
                 }
-                
+
                 keysToRemove.forEach(key => localStorage.removeItem(key));
-                
+
                 // Clear sessionStorage
                 sessionStorage.clear();
-                
+
                 // Clear cache if available
                 if ('caches' in window) {
                     caches.keys().then(names => {
@@ -225,7 +266,7 @@ export default function Settings() {
                         });
                     });
                 }
-                
+
                 alert('Cache cleared successfully! Please refresh the page.');
             } catch (error) {
                 console.error('Error clearing cache:', error);
@@ -240,6 +281,10 @@ export default function Settings() {
                 alert('Account deletion is not implemented yet. Please contact support.');
             }
         }
+    };
+
+    const handleContactSupport = () => {
+        window.location.href = 'mailto:aadipandey223@gmail.com?subject=Tracker Hub Support Request';
     };
 
     return (
@@ -304,7 +349,7 @@ export default function Settings() {
                                     </SelectContent>
                                 </Select>
                             </div>
-                            
+
                             <div className="flex items-center justify-between">
                                 <div>
                                     <p className="font-medium">Currency</p>
@@ -359,10 +404,10 @@ export default function Settings() {
                             </CardTitle>
                         </CardHeader>
                         <CardContent className="space-y-4">
-                            <Button 
-                                variant="outline" 
+                            <Button
+                                variant="outline"
                                 className="w-full justify-between p-4 h-auto"
-                                onClick={handleChangePassword}
+                                onClick={() => setIsPasswordDialogOpen(true)}
                             >
                                 <div className="flex items-center">
                                     <Key className="w-5 h-5 mr-3 text-red-500" />
@@ -385,8 +430,8 @@ export default function Settings() {
                             </CardTitle>
                         </CardHeader>
                         <CardContent className="space-y-4">
-                            <Button 
-                                variant="outline" 
+                            <Button
+                                variant="outline"
                                 className="w-full justify-between p-4 h-auto"
                                 onClick={handleExportData}
                             >
@@ -399,9 +444,9 @@ export default function Settings() {
                                 </div>
                                 <ChevronRight className="w-4 h-4 text-gray-400" />
                             </Button>
-                            
-                            <Button 
-                                variant="outline" 
+
+                            <Button
+                                variant="outline"
                                 className="w-full justify-between p-4 h-auto"
                                 onClick={handleClearCache}
                             >
@@ -410,6 +455,32 @@ export default function Settings() {
                                     <div className="text-left">
                                         <p className="font-medium">Clear Cache</p>
                                         <p className="text-xs text-gray-500">Clear local storage and cache</p>
+                                    </div>
+                                </div>
+                                <ChevronRight className="w-4 h-4 text-gray-400" />
+                            </Button>
+                        </CardContent>
+                    </Card>
+
+                    {/* Help & Support */}
+                    <Card className="bg-white dark:bg-gray-800">
+                        <CardHeader>
+                            <CardTitle className="flex items-center gap-2">
+                                <HelpCircle className="w-5 h-5" />
+                                Help & Support
+                            </CardTitle>
+                        </CardHeader>
+                        <CardContent className="space-y-4">
+                            <Button
+                                variant="outline"
+                                className="w-full justify-between p-4 h-auto"
+                                onClick={handleContactSupport}
+                            >
+                                <div className="flex items-center">
+                                    <Mail className="w-5 h-5 mr-3 text-blue-500" />
+                                    <div className="text-left">
+                                        <p className="font-medium">Contact Support</p>
+                                        <p className="text-xs text-gray-500">Send us an email at aadipandey223@gmail.com</p>
                                     </div>
                                 </div>
                                 <ChevronRight className="w-4 h-4 text-gray-400" />
@@ -426,8 +497,8 @@ export default function Settings() {
                             </CardTitle>
                         </CardHeader>
                         <CardContent className="space-y-4">
-                            <Button 
-                                variant="outline" 
+                            <Button
+                                variant="outline"
                                 className="w-full justify-between p-4 h-auto"
                                 onClick={handleLogout}
                             >
@@ -441,8 +512,8 @@ export default function Settings() {
                                 <ChevronRight className="w-4 h-4 text-gray-400" />
                             </Button>
 
-                            <Button 
-                                variant="outline" 
+                            <Button
+                                variant="outline"
                                 className="w-full justify-between p-4 h-auto text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-900/10"
                                 onClick={handleDeleteAccount}
                             >
@@ -459,6 +530,74 @@ export default function Settings() {
                     </Card>
                 </div>
             </div>
+
+            {/* Password Change Dialog */}
+            <Dialog open={isPasswordDialogOpen} onOpenChange={setIsPasswordDialogOpen}>
+                <DialogContent className="sm:max-w-md">
+                    <DialogHeader>
+                        <DialogTitle className="flex items-center gap-2">
+                            <Key className="w-5 h-5 text-orange-500" />
+                            Change Password
+                        </DialogTitle>
+                        <DialogDescription>
+                            Update your account password. Make sure it's at least 6 characters long.
+                        </DialogDescription>
+                    </DialogHeader>
+
+                    <div className="space-y-4 py-4">
+                        <div className="space-y-2">
+                            <Label htmlFor="new-password">New Password</Label>
+                            <Input
+                                id="new-password"
+                                type="password"
+                                placeholder="Enter new password"
+                                value={passwordForm.newPassword}
+                                onChange={(e) => setPasswordForm({ ...passwordForm, newPassword: e.target.value })}
+                                className="w-full"
+                            />
+                        </div>
+
+                        <div className="space-y-2">
+                            <Label htmlFor="confirm-password">Confirm Password</Label>
+                            <Input
+                                id="confirm-password"
+                                type="password"
+                                placeholder="Confirm new password"
+                                value={passwordForm.confirmPassword}
+                                onChange={(e) => setPasswordForm({ ...passwordForm, confirmPassword: e.target.value })}
+                                className="w-full"
+                            />
+                        </div>
+
+                        {passwordError && (
+                            <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-3">
+                                <p className="text-sm text-red-600 dark:text-red-400">{passwordError}</p>
+                            </div>
+                        )}
+                    </div>
+
+                    <DialogFooter className="gap-2 sm:gap-0">
+                        <Button
+                            variant="outline"
+                            onClick={() => {
+                                setIsPasswordDialogOpen(false);
+                                setPasswordForm({ currentPassword: '', newPassword: '', confirmPassword: '' });
+                                setPasswordError('');
+                            }}
+                            disabled={isChangingPassword}
+                        >
+                            Cancel
+                        </Button>
+                        <Button
+                            onClick={handleChangePassword}
+                            disabled={isChangingPassword}
+                            className="bg-orange-600 hover:bg-orange-700"
+                        >
+                            {isChangingPassword ? 'Updating...' : 'Update Password'}
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
         </div>
     );
 }
