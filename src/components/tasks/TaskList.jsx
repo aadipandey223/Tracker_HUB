@@ -1,9 +1,12 @@
 import { useState, useCallback, useRef } from 'react';
 import { format } from 'date-fns';
+import DatePicker from 'react-datepicker';
+import 'react-datepicker/dist/react-datepicker.css';
+import './datepicker-custom.css';
 import {
   CheckSquare, Square, AlertCircle,
   Briefcase, DollarSign, Users, BookOpen, Home, Activity,
-  MoreHorizontal, Plus, Trash2, Edit2, ChevronDown, ChevronUp
+  MoreHorizontal, Plus, Trash2, Edit2, ChevronDown, ChevronUp, Calendar as CalendarIcon
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
@@ -121,103 +124,128 @@ export default function TaskList({ tasks, categories, onUpdate, onDelete, onAdd 
         </div>
 
         {/* Task Cards */}
-        <div className="space-y-3 pb-20">
+        <div className="space-y-4 pb-20">
           {tasks.map((task) => {
             const isDone = task.status === 'Done';
             const isOverdue = !isDone && task.due_date && task.due_date < today;
+            const isToday = !isDone && task.due_date === today;
+
+            // Get priority color for border gradient
+            const priorityColor = task.priority === 'High' ? 'from-red-500' :
+              task.priority === 'Medium' ? 'from-yellow-500' :
+                task.priority === 'Low' ? 'from-blue-500' : 'from-gray-400';
 
             return (
               <div key={task.id} className={cn(
-                "bg-white dark:bg-gray-800 p-4 rounded-lg border shadow-sm transition-all",
-                isDone ? "border-gray-100 dark:border-gray-700 opacity-75" : "border-gray-200 dark:border-gray-700"
+                "relative bg-white dark:bg-gray-700 rounded-2xl shadow-md hover:shadow-lg transition-all duration-300 overflow-hidden border-2",
+                isDone && "opacity-60 border-gray-200 dark:border-gray-600",
+                !isDone && "border-gray-200 dark:border-gray-600 hover:border-gray-300 dark:hover:border-gray-500"
               )}>
-                <div className="flex items-start gap-3 mb-3">
-                  <Checkbox
-                    checked={isDone}
-                    onCheckedChange={(checked) => immediateUpdate(task.id, { status: checked ? 'Done' : 'Not Started' })}
-                    className="mt-1 data-[state=checked]:bg-green-500 data-[state=checked]:border-green-500"
-                  />
-                  <div className="flex-1 min-w-0">
-                    <Input
-                      value={editingValues[`${task.id}-title`] ?? task.title}
-                      onChange={(e) => debouncedUpdate(task.id, 'title', e.target.value)}
-                      className={cn(
-                        "border-none bg-transparent h-auto p-0 text-base font-medium focus-visible:ring-0 mb-1",
-                        isDone && "line-through text-gray-400"
-                      )}
-                    />
-                    <div className="flex flex-wrap gap-2 text-xs">
-                      {/* Priority Badge */}
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <div className={cn(
-                            "px-2 py-1 rounded-full flex items-center gap-1 cursor-pointer border",
-                            PRIORITIES[task.priority]?.color.replace('bg-', 'bg-opacity-20 text-').replace('500', '700 dark:text-gray-200'),
-                            "border-transparent hover:border-gray-300"
-                          )}>
-                            <div className={`w-1.5 h-1.5 rounded-full ${PRIORITIES[task.priority]?.color}`} />
-                            {task.priority}
-                          </div>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent>
-                          {Object.keys(PRIORITIES).map(p => (
-                            <DropdownMenuItem key={p} onClick={() => immediateUpdate(task.id, { priority: p })}>
-                              <div className={`w-2 h-2 rounded-full mr-2 ${PRIORITIES[p]?.color}`} />
-                              {p}
-                            </DropdownMenuItem>
-                          ))}
-                        </DropdownMenuContent>
-                      </DropdownMenu>
+                {/* Priority Accent Bar */}
+                <div className={cn(
+                  "absolute top-0 left-0 right-0 h-2 bg-gradient-to-r to-transparent",
+                  priorityColor
+                )} />
 
-                      {/* Category Badge */}
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <div className="px-2 py-1 rounded-full bg-gray-100 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 flex items-center gap-1 cursor-pointer">
-                            {task.category}
-                          </div>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent>
-                          {categories.map(cat => (
-                            <DropdownMenuItem key={cat.id} onClick={() => immediateUpdate(task.id, { category: cat.name })}>
-                              {cat.name}
-                            </DropdownMenuItem>
-                          ))}
-                        </DropdownMenuContent>
-                      </DropdownMenu>
+                <div className="p-5">
+                  {/* Header Section */}
+                  <div className="flex items-start gap-3 mb-4">
+                    <Checkbox
+                      checked={isDone}
+                      onCheckedChange={(checked) => immediateUpdate(task.id, { status: checked ? 'Done' : 'Not Started' })}
+                      className="mt-0.5 h-5 w-5 rounded-md data-[state=checked]:bg-gradient-to-br data-[state=checked]:from-green-500 data-[state=checked]:to-green-600 data-[state=checked]:border-green-500 shadow-sm"
+                    />
+                    <div className="flex-1 min-w-0">
+                      <Input
+                        value={editingValues[`${task.id}-title`] ?? task.title}
+                        onChange={(e) => debouncedUpdate(task.id, 'title', e.target.value)}
+                        className={cn(
+                          "border-none bg-transparent h-auto p-0 text-base font-semibold focus-visible:ring-0 mb-2 text-gray-900 dark:text-white",
+                          isDone && "line-through text-gray-400"
+                        )}
+                      />
+
+                      {/* Badges Row */}
+                      <div className="flex flex-wrap gap-2">
+                        {/* Priority Badge */}
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <div className={cn(
+                              "px-2.5 py-1.5 rounded-lg flex items-center gap-1.5 cursor-pointer transition-all hover:scale-105 font-bold text-xs border-2 shadow-md",
+                              task.priority === 'High' && "bg-[#FF5555] hover:bg-[#FF7777] text-white border-[#FF3333]",
+                              task.priority === 'Medium' && "bg-[#FFD700] hover:bg-[#FFE44D] text-gray-900 border-[#FFC700]",
+                              task.priority === 'Low' && "bg-[#5599FF] hover:bg-[#77AAFF] text-white border-[#3377FF]",
+                              task.priority === 'Optional' && "bg-[#AAAAAA] hover:bg-[#CCCCCC] text-white border-[#999999]"
+                            )}>
+                              <div className="w-2 h-2 rounded-full bg-white" />
+                              {task.priority}
+                            </div>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent>
+                            {Object.keys(PRIORITIES).map(p => (
+                              <DropdownMenuItem key={p} onClick={() => immediateUpdate(task.id, { priority: p })}>
+                                <div className={`w-2.5 h-2.5 rounded-full mr-2 ${PRIORITIES[p]?.color}`} />
+                                {p}
+                              </DropdownMenuItem>
+                            ))}
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+
+                        {/* Category Badge */}
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <div className="px-2.5 py-1.5 rounded-lg bg-[#AA66FF] hover:bg-[#BB88FF] border-2 border-[#9955EE] flex items-center gap-1.5 cursor-pointer hover:scale-105 transition-all shadow-md">
+                              <Briefcase className="w-3.5 h-3.5 text-white" />
+                              <span className="text-xs font-bold text-white">{task.category}</span>
+                            </div>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent>
+                            {categories.map(cat => (
+                              <DropdownMenuItem key={cat.id} onClick={() => immediateUpdate(task.id, { category: cat.name })}>
+                                {cat.name}
+                              </DropdownMenuItem>
+                            ))}
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </div>
                     </div>
                   </div>
-                </div>
 
-                <div className="flex items-center justify-between gap-2 mt-3 pl-7">
-                  {/* Date Picker */}
-                  <Popover>
-                    <PopoverTrigger asChild>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className={cn(
-                          "h-7 px-2 text-xs",
-                          isOverdue ? "text-red-500 bg-red-50 dark:bg-red-900/20" : "text-gray-500"
-                        )}
-                      >
-                        {task.due_date ? format(new Date(task.due_date), 'MMM d') : 'Set Date'}
-                      </Button>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-auto p-0" align="start">
-                      <CalendarComponent
-                        mode="single"
-                        selected={task.due_date ? new Date(task.due_date) : undefined}
-                        onSelect={(date) => immediateUpdate(task.id, { due_date: date ? format(date, 'yyyy-MM-dd') : null })}
-                        initialFocus
-                      />
-                    </PopoverContent>
-                  </Popover>
+                  {/* Footer Section */}
+                  <div className="flex items-center justify-between gap-3 pt-4 border-t-2 border-gray-200 dark:border-gray-600">
+                    {/* Date Badge */}
+                    <DatePicker
+                      selected={task.due_date ? new Date(task.due_date) : null}
+                      onChange={(date) => immediateUpdate(task.id, { due_date: date ? format(date, 'yyyy-MM-dd') : null })}
+                      showMonthDropdown
+                      showYearDropdown
+                      dropdownMode="select"
+                      withPortal
+                      portalId="root-portal"
+                      customInput={
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className={cn(
+                            "h-8 px-3 rounded-lg font-bold text-xs transition-all hover:scale-105 border-2 flex items-center gap-1.5 shadow-md",
+                            isOverdue && "bg-[#FF5555] hover:bg-[#FF7777] text-white border-[#FF3333]",
+                            isToday && "bg-[#55DD55] hover:bg-[#77EE77] text-white border-[#33CC33]",
+                            !isOverdue && !isToday && "bg-[#7788AA] hover:bg-[#99AACC] text-white border-[#6677AA]"
+                          )}
+                        >
+                          <CalendarIcon className="w-3.5 h-3.5" />
+                          {task.due_date ? format(new Date(task.due_date), 'MMM dd') : 'Set Date'}
+                        </Button>
+                      }
+                      dateFormat="MMM dd, yyyy"
+                      popperClassName="z-50"
+                    />
 
-                  <div className="flex items-center gap-1">
+                    {/* Delete Button */}
                     <Button
                       variant="ghost"
                       size="icon"
-                      className="h-8 w-8 text-gray-400 hover:text-red-500"
+                      className="h-8 w-8 rounded-lg bg-[#FF5555] text-white hover:bg-[#FF3333] hover:scale-105 transition-all border-2 border-[#FF3333] shadow-md"
                       onClick={() => onDelete(task.id)}
                     >
                       <Trash2 className="w-4 h-4" />

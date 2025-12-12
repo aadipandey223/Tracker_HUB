@@ -20,10 +20,12 @@ CREATE TABLE public.categories (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE NOT NULL,
     name TEXT NOT NULL,
-    type TEXT CHECK (type IN ('income', 'expense')) NOT NULL,
+    type TEXT CHECK (type IN ('task', 'income', 'expense', 'debt')) NOT NULL,
+    icon TEXT,
     color TEXT DEFAULT '#3B82F6',
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
+
 
 -- Monthly Budgets Table (simplified for total balance tracking)
 CREATE TABLE public.monthly_budgets (
