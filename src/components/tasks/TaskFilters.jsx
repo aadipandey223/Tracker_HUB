@@ -19,7 +19,7 @@ export default function TaskFilters({ filters, onFilterChange, categories }) {
   };
 
   return (
-    <div className="flex items-center gap-2 mb-4">
+    <div id="task-filters" className="flex items-center gap-2 mb-4">
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
           <Button variant="outline" className="gap-2 border-dashed">
@@ -35,21 +35,21 @@ export default function TaskFilters({ filters, onFilterChange, categories }) {
         <DropdownMenuContent align="start" className="w-56">
           <DropdownMenuLabel>Priority</DropdownMenuLabel>
           {['High', 'Medium', 'Low', 'Optional'].map(p => (
-            <DropdownMenuItem 
-              key={p} 
+            <DropdownMenuItem
+              key={p}
               onClick={() => onFilterChange({ ...filters, priority: p })}
               className={filters.priority === p ? 'bg-accent' : ''}
             >
               {p}
             </DropdownMenuItem>
           ))}
-          
+
           <DropdownMenuSeparator />
-          
+
           <DropdownMenuLabel>Status</DropdownMenuLabel>
           {['Not Started', 'In Progress', 'Done'].map(s => (
-            <DropdownMenuItem 
-              key={s} 
+            <DropdownMenuItem
+              key={s}
               onClick={() => onFilterChange({ ...filters, status: s })}
               className={filters.status === s ? 'bg-accent' : ''}
             >
@@ -61,8 +61,8 @@ export default function TaskFilters({ filters, onFilterChange, categories }) {
 
           <DropdownMenuLabel>Category</DropdownMenuLabel>
           {categories.map(c => (
-            <DropdownMenuItem 
-              key={c.id} 
+            <DropdownMenuItem
+              key={c.id}
               onClick={() => onFilterChange({ ...filters, category: c.name })}
               className={filters.category === c.name ? 'bg-accent' : ''}
             >

@@ -100,7 +100,7 @@ export default function ImageLibrary({ onSelectImage, onUploadImage }) {
   const searchImages = async () => {
     if (!searchQuery.trim()) return;
     setIsSearching(true);
-    
+
     // Using curated fallback images based on search query
     const allImages = Object.values(stockImages).flat();
     const shuffled = [...allImages].sort(() => Math.random() - 0.5);
@@ -111,12 +111,26 @@ export default function ImageLibrary({ onSelectImage, onUploadImage }) {
   const handleUpload = async (e) => {
     const file = e.target.files[0];
     if (!file) return;
+
+    // Check file size (3MB = 3 * 1024 * 1024 bytes)
+    if (file.size > 3 * 1024 * 1024) {
+      alert('Image size must be less than 3MB');
+      return;
+    }
+
+    // Check file type
+    if (!file.type.startsWith('image/')) {
+      alert('Please upload an image file');
+      return;
+    }
+
     setIsUploading(true);
     try {
       const { file_url } = await base44.integrations.Core.UploadFile({ file });
       onSelectImage(file_url);
     } catch (error) {
       console.error(error);
+      alert('Failed to upload image');
     }
     setIsUploading(false);
   };

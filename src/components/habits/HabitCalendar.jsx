@@ -126,7 +126,7 @@ function HabitCalendar({ habits, currentMonth, habitLogs, onToggleHabit, onDelet
           <div className="min-w-max">
             {/* Header Row */}
             <div className="flex border-b border-gray-200 dark:border-gray-700">
-              <div className="w-48 p-3 font-medium text-gray-700 dark:text-gray-300 sticky left-0 bg-white dark:bg-gray-800 z-10">
+              <div className="w-24 md:w-48 p-2 md:p-3 font-medium text-gray-700 dark:text-gray-300 sticky left-0 bg-white dark:bg-gray-800 z-10 text-xs md:text-base truncate">
                 Habit
               </div>
               {calendarData.map((week, weekIndex) => (
@@ -165,9 +165,9 @@ function HabitCalendar({ habits, currentMonth, habitLogs, onToggleHabit, onDelet
             {/* Habit Rows */}
             {habits.map((habit) => (
               <div key={habit.id} className="flex border-b border-gray-100 dark:border-gray-800 hover:bg-gray-50 dark:hover:bg-gray-800/50">
-                <div className="w-48 p-3 flex items-center gap-2 sticky left-0 bg-white dark:bg-gray-800 z-10">
-                  <span className="text-xl">{habit.icon}</span>
-                  <span className="font-medium text-gray-900 dark:text-white">{habit.name}</span>
+                <div className="w-24 md:w-48 p-2 md:p-3 flex items-center gap-1 md:gap-2 sticky left-0 bg-white dark:bg-gray-800 z-10">
+                  <span className="text-base md:text-xl">{habit.icon}</span>
+                  <span className="font-medium text-gray-900 dark:text-white text-xs md:text-base truncate">{habit.name}</span>
                 </div>
 
                 {/* Week Checkboxes */}

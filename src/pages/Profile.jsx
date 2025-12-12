@@ -100,9 +100,9 @@ export default function Profile() {
         const file = e.target.files?.[0];
         if (!file) return;
 
-        // Check file size (2MB = 2 * 1024 * 1024 bytes)
-        if (file.size > 2 * 1024 * 1024) {
-            toast.error('Image size must be less than 2MB');
+        // Check file size (3MB = 3 * 1024 * 1024 bytes)
+        if (file.size > 3 * 1024 * 1024) {
+            toast.error('Image size must be less than 3MB');
             return;
         }
 
