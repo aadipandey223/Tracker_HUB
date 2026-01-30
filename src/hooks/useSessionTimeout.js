@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { base44 } from '@/api/base44Client.supabase';
 
 /**
@@ -6,8 +6,25 @@ import { base44 } from '@/api/base44Client.supabase';
  */
 export const useSessionTimeout = (timeoutMinutes = 30) => {
   const timeoutRef = useRef(null);
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+
+  useEffect(() => {
+    // Check if user is authenticated before starting timeout
+    const checkAuth = async () => {
+      try {
+        const session = await base44.auth.getSession();
+        setIsAuthenticated(!!session);
+      } catch (err) {
+        setIsAuthenticated(false);
+      }
+    };
+    checkAuth();
+  }, []);
 
   const resetTimeout = () => {
+    // Only set timeout if user is authenticated
+    if (!isAuthenticated) return;
+
     // Clear existing timeout
     if (timeoutRef.current) {
       clearTimeout(timeoutRef.current);
@@ -21,6 +38,8 @@ export const useSessionTimeout = (timeoutMinutes = 30) => {
   };
 
   useEffect(() => {
+    if (!isAuthenticated) return;
+
     // Events that indicate user activity
     const events = ['mousedown', 'keydown', 'scroll', 'touchstart', 'click'];
 

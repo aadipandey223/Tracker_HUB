@@ -25,6 +25,7 @@ function App() {
         const checkAuth = async () => {
             try {
                 const session = await base44.auth.getSession();
+                console.log('Initial auth check:', session ? 'authenticated' : 'not authenticated');
                 setIsAuthenticated(!!session);
             } catch (error) {
                 console.error('Auth check failed:', error);
@@ -35,9 +36,17 @@ function App() {
         checkAuth();
 
         // Listen for auth changes
-        const { data: { subscription } } = base44.auth.onAuthStateChange((event, session) => {
+        const { data: { subscription } } = base44.auth.onAuthStateChange(async (event, session) => {
             console.log('Auth state changed:', event, session ? 'logged in' : 'logged out');
-            setIsAuthenticated(!!session);
+            
+            if (event === 'SIGNED_IN' || event === 'INITIAL_SESSION') {
+                setIsAuthenticated(true);
+            } else if (event === 'SIGNED_OUT') {
+                setIsAuthenticated(false);
+            } else {
+                // For other events, check session status
+                setIsAuthenticated(!!session);
+            }
         });
 
         return () => subscription?.unsubscribe();

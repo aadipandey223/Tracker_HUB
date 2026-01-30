@@ -32,10 +32,14 @@ export default function Welcome() {
             try {
                 const session = await base44.auth.getSession();
                 if (session) {
-                    navigate('/dashboard');
+                    console.log('User already has session, redirecting to dashboard');
+                    // Add a small delay to ensure auth state is fully propagated
+                    setTimeout(() => {
+                        navigate('/dashboard', { replace: true });
+                    }, 100);
                 }
             } catch (err) {
-                // Not logged in, stay on welcome page
+                console.log('No active session, staying on welcome page');
             }
         };
         checkSession();
@@ -65,12 +69,22 @@ export default function Welcome() {
         setIsLoading(true);
 
         try {
-            await base44.auth.signInWithEmail(loginEmail, loginPassword);
-            await checkIfReturningUser();
-            navigate('/dashboard');
+            console.log('Attempting email login for:', loginEmail);
+            const data = await base44.auth.signInWithEmail(loginEmail, loginPassword);
+            console.log('Login successful:', data);
+            
+            if (data.session) {
+                console.log('Session established, navigating to dashboard');
+                // Wait a bit for auth state to propagate
+                await new Promise(resolve => setTimeout(resolve, 500));
+                navigate('/dashboard', { replace: true });
+            } else {
+                setError('Login successful but session not established. Please try again.');
+                setIsLoading(false);
+            }
         } catch (err) {
+            console.error('Login error details:', err);
             setError(err.message || 'Login failed. Please check your credentials.');
-        } finally {
             setIsLoading(false);
         }
     };
@@ -92,12 +106,15 @@ export default function Welcome() {
         setIsLoading(true);
 
         try {
-            await base44.auth.signUpWithEmail(signupEmail, signupPassword);
+            console.log('Attempting email signup for:', signupEmail);
+            const data = await base44.auth.signUpWithEmail(signupEmail, signupPassword);
+            console.log('Signup response:', data);
             setError('');
             alert('Account created! Please check your email to verify your account.');
             // Switch to login tab
             document.querySelector('[value="login"]')?.click();
         } catch (err) {
+            console.error('Signup error details:', err);
             setError(err.message || 'Signup failed. Please try again.');
         } finally {
             setIsLoading(false);
@@ -109,9 +126,12 @@ export default function Welcome() {
         setError('');
 
         try {
-            await base44.auth.signInWithOAuth('google', '/dashboard');
+            console.log('Attempting Google OAuth login...');
+            const data = await base44.auth.signInWithOAuth('google', '/dashboard');
+            console.log('OAuth login response:', data);
             await checkIfReturningUser();
         } catch (err) {
+            console.error('OAuth error details:', err);
             setError(err.message || 'Google login failed');
             setIsLoading(false);
         }
